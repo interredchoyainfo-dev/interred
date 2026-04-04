@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html class="light" lang="es">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Inter Red | Acceso Administrativo</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&amp;family=Manrope:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+          tailwind.config = {
+            darkMode: "class",
+            theme: {
+              extend: {
+                colors: {
+                  "primary": "#E30613",
+                  "on-primary": "#ffffff",
+                  "background": "#ffffff",
+                  "surface": "#ffffff",
+                  "on-surface": "#121212",
+                  "surface-variant": "#f4f4f4",
+                  "on-surface-variant": "#4a4a4a",
+                  "outline": "#d1d1d1",
+                  "outline-variant": "#e5e5e5",
+                  "secondary": "#121212",
+                  "error": "#E30613"
+                },
+                fontFamily: {
+                  "headline": ["Plus Jakarta Sans", "sans-serif"],
+                  "body": ["Plus Jakarta Sans", "sans-serif"],
+                  "label": ["Plus Jakarta Sans", "sans-serif"]
+                },
+                borderRadius: {
+                  "DEFAULT": "0.5rem",
+                  "lg": "0.5rem",
+                  "xl": "0.5rem",
+                  "full": "9999px"
+                },
+              },
+            },
+          }
+    </script>
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 1);
+            border: 1px solid #e5e5e5;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #fcfcfc;
+        }
+    </style>
+</head>
+<body class="font-body text-on-surface min-h-screen flex flex-col">
+    <!-- Main Content -->
+    <main class="flex-grow flex items-center justify-center relative overflow-hidden px-6 py-12">
+        <!-- Subtle Background Elements -->
+        <div class="absolute top-0 left-0 w-full h-full pointer-events-none opacity-5">
+            <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary rounded-full blur-[120px]"></div>
+            <div class="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-secondary rounded-full blur-[120px]"></div>
+        </div>
+        <!-- Asymmetric Accent -->
+        <div class="hidden lg:block absolute left-20 top-1/2 -translate-y-1/2 max-w-sm">
+            <h1 class="font-headline text-5xl font-extrabold text-secondary leading-tight tracking-tight mb-6">
+                Conectando <span class="text-primary">cada hogar</span> con el futuro.
+            </h1>
+            <p class="text-on-surface-variant text-lg leading-relaxed font-medium">
+                Accede al panel administrativo de Inter Red para gestionar clientes, servicios y facturación en Sol de Mayo, Frías y toda la región.
+            </p>
+        </div>
+        <!-- Login Card -->
+        <div class="relative z-10 w-full max-w-[440px] lg:ml-[40%]">
+            <div class="glass-panel p-8 md:p-12 rounded-lg shadow-xl bg-white">
+                <!-- Brand Anchor -->
+                <div class="flex flex-col items-center mb-10">
+                    <div class="mb-4">
+                        <span class="font-headline text-3xl font-extrabold tracking-tighter text-secondary">
+                            <span class="text-primary">Inter</span> Red
+                        </span>
+                    </div>
+                    <p class="font-headline text-xl font-bold text-on-surface">Gestión de Cobros</p>
+                    <p class="text-sm text-on-surface-variant mt-1 font-medium">Ingresa tus credenciales de administrador</p>
+                </div>
+                <form id="login-form" class="space-y-6">
+                    <!-- Username Field -->
+                    <div class="space-y-2">
+                        <label class="block text-sm font-bold text-secondary uppercase tracking-wider" for="username">Usuario</label>
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-4 flex items-center text-on-surface-variant group-focus-within:text-primary transition-colors">
+                                <span class="material-symbols-outlined" data-icon="person">person</span>
+                            </div>
+                            <input class="w-full pl-12 pr-4 py-4 bg-surface-variant border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary transition-all outline-none text-on-surface placeholder:text-on-surface-variant/40" id="username" placeholder="nombre.apellido" type="text" required/>
+                        </div>
+                    </div>
+                    <!-- Password Field -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label class="block text-sm font-bold text-secondary uppercase tracking-wider" for="password">Contraseña</label>
+                            <a class="text-xs font-bold text-primary hover:underline transition-colors" href="#">¿Olvidaste tu contraseña?</a>
+                        </div>
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-4 flex items-center text-on-surface-variant group-focus-within:text-primary transition-colors">
+                                <span class="material-symbols-outlined" data-icon="lock">lock</span>
+                            </div>
+                            <input class="w-full pl-12 pr-12 py-4 bg-surface-variant border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary transition-all outline-none text-on-surface placeholder:text-on-surface-variant/40" id="password" placeholder="••••••••" type="password" required/>
+                        </div>
+                    </div>
+                    <!-- Error Message Area -->
+                    <div id="error-alert" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm font-bold" role="alert">
+                        Datos incorrectos. Intente de nuevo.
+                    </div>
+                    <!-- Submit Button -->
+                    <button class="w-full bg-primary hover:bg-[#c40510] text-white font-headline font-extrabold py-4 rounded-lg shadow-lg active:scale-[0.99] transition-all duration-200 mt-4 flex items-center justify-center gap-2 group" type="submit">
+                        INGRESAR AL SISTEMA
+                        <span class="material-symbols-outlined text-xl group-hover:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+                    </button>
+                </form>
+                <!-- Support Footer -->
+                <div class="mt-10 pt-8 border-t border-outline-variant flex flex-col items-center gap-4">
+                    <p class="text-xs text-on-surface-variant text-center font-medium leading-relaxed">
+                        ¿Problemas para acceder? Contacta a Soporte Técnico IT.
+                    </p>
+                    <div class="flex gap-4">
+                        <a class="text-secondary hover:text-primary transition-all flex items-center gap-1 text-sm font-extrabold uppercase tracking-tight" href="#">
+                            <span class="material-symbols-outlined text-lg" data-icon="support_agent">support_agent</span>
+                            Ayuda
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <!-- Branding Subtle Footer -->
+            <p class="text-center mt-8 text-xs font-bold text-secondary/40 uppercase tracking-widest">
+                © 2024 Inter Red. Conectando Santiago del Estero.
+            </p>
+        </div>
+    </main>
+    <!-- Visual Anchor: Solid Brand Line -->
+    <div class="fixed bottom-0 left-0 w-full h-1 bg-primary"></div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            const errorAlert = document.getElementById('error-alert');
+
+            // Credenciales indicadas: Admin / Giolezana19
+            if (user === 'Admin' && pass === 'Giolezana19') {
+                const session = {
+                    auth: true,
+                    time: Date.now(),
+                    key: btoa("Admin")
+                };
+                sessionStorage.setItem('auth', JSON.stringify(session));
+                window.location.href = 'dashboard.html';
+            } else {
+                errorAlert.classList.remove('hidden');
+                setTimeout(() => errorAlert.classList.add('hidden'), 3000);
+            }
+        });
+    </script>
+</body>
+</html>

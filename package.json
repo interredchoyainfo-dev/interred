@@ -1,0 +1,28 @@
+{
+  "name": "interredpagina",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Sistema de Gestión de Cobros - INTER RED",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "server": "node server/index.js",
+    "start": "start cmd /k \"npm run server\" && npm run dev"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "vite": "^6.0.0"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "firebase": "^12.11.0",
+    "mikronode": "^2.3.11",
+    "puppeteer": "^24.40.0",
+    "routeros-client": "^1.1.1"
+  }
+}

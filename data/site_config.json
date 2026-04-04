@@ -1,0 +1,56 @@
+{
+  "hero": {
+    "title": "CONECTANDOTE <span class=\"text-primary\">AL MUNDO</span>",
+    "description": "Experimenta la velocidad del futuro con nuestra red de internet de alta fidelidad. Sin cortes, sin esperas, solo conexión pura."
+  },
+  "plans": {
+    "hogar": {
+      "price": "30.000"
+    },
+    "gaming": {
+      "price": "45.000"
+    }
+  },
+  "contact": {
+    "whatsapp": "3855374835",
+    "facebook": "interred.net",
+    "instagram": "interred.ar"
+  },
+  "towns": [
+    {
+      "id": "choya",
+      "name": "Choya",
+      "label": "Sede Central - Cobertura Total",
+      "mapUrl": "https://maps.google.com/maps?q=Choya,Santiago%20del%20Estero&t=&z=14&ie=UTF8&iwloc=&output=embed",
+      "fullUrl": "https://maps.app.goo.gl/c66v3Ha7CLgDHzfD7"
+    },
+    {
+      "id": "frias",
+      "name": "Frías",
+      "label": "Disponibilidad Inmediata",
+      "mapUrl": "https://maps.google.com/maps?q=Frias,Santiago%20del%20Estero&t=&z=14&ie=UTF8&iwloc=&output=embed",
+      "fullUrl": "https://maps.app.goo.gl/FpCB2YX4MW174RwV7"
+    },
+    {
+      "id": "villalapunta",
+      "name": "Villa La Punta",
+      "label": "Conectividad de Alta Fidelidad",
+      "mapUrl": "https://maps.google.com/maps?q=Villa%20la%20punta,Santiago%20del%20Estero&t=&z=14&ie=UTF8&iwloc=&output=embed",
+      "fullUrl": "https://maps.app.goo.gl/orcohW1dMArFt51x5"
+    },
+    {
+      "id": "soldemayo",
+      "name": "Sol de Mayo",
+      "label": "Compromiso Local",
+      "mapUrl": "https://maps.google.com/maps?q=Sol%20de%20Mayo,Santiago%20del%20Estero&t=&z=14&ie=UTF8&iwloc=&output=embed",
+      "fullUrl": "https://maps.app.goo.gl/RwxiEwfLxCBQnTac7"
+    },
+    {
+      "id": "sanpedro",
+      "name": "San Pedro de Choya",
+      "label": "Conexión en cada hogar",
+      "mapUrl": "https://maps.google.com/maps?q=-28.467403,-64.866361&t=&z=14&ie=UTF8&iwloc=&output=embed",
+      "fullUrl": "https://www.google.com/maps?q=-28.467403,-64.866361"
+    }
+  ]
+}

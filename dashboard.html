@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <link rel="stylesheet" href="/css/styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="INTER RED - Sistema de Gestión de Clientes y Cobros. Choya, Santiago del Estero.">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="INTER RED">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <title>INTER RED - Gestión de Cobros</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Splash Screen -->
+    <div id="splash-screen" class="splash-screen">
+        <div class="splash-content">
+            <div class="splash-icon">
+                <img src="/icons/icon-192.png" alt="INTER RED" width="80" height="80" style="border-radius: 20px;">
+            </div>
+            <h1 class="splash-title">INTER RED</h1>
+            <p class="splash-subtitle">Sistema de Gestión</p>
+            <div class="splash-loader">
+                <div class="splash-loader-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="app" class="app hidden">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="header-logo">
+                        <img src="/icons/icon-192.png" alt="INTER RED" width="32" height="32" style="border-radius: 8px;">
+                    </div>
+                    <div>
+                        <h1 class="header-title">INTER RED</h1>
+                        <p class="header-subtitle" id="header-subtitle">Dashboard</p>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <button class="header-btn" id="btn-notifications" title="Notificaciones">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                        </svg>
+                        <span class="notification-badge hidden" id="notification-badge">0</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <main class="app-main" id="app-main">
+            <!-- Dashboard View -->
+            <section id="view-dashboard" class="view active">
+                <div class="view-content">
+                    <!-- Month Selector -->
+                    <div class="month-selector">
+                        <button class="month-nav-btn" id="btn-prev-month">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+                        </button>
+                        <span class="month-label" id="current-month-label">Marzo 2026</span>
+                        <button class="month-nav-btn" id="btn-next-month">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Stats Cards -->
+                    <div class="stats-grid">
+                        <div class="stat-card stat-total">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-number" id="stat-total-clients">0</span>
+                                <span class="stat-label">Total Clientes</span>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-paid">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-number" id="stat-paid">0</span>
+                                <span class="stat-label">Pagaron</span>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-debt">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-number" id="stat-debt">0</span>
+                                <span class="stat-label">Con Deuda</span>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-revenue">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-number" id="stat-revenue">$0</span>
+                                <span class="stat-label">Recaudado</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Zones Summary -->
+                    <div class="section-header">
+                        <h2 class="section-title">Clientes por Zona</h2>
+                    </div>
+                    <div class="zones-grid" id="zones-grid">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <!-- Debt List -->
+                    <div class="section-header">
+                        <h2 class="section-title">Clientes con Deuda</h2>
+                        <div class="header-actions-group">
+                            <button class="btn-primary-sm" id="next-debtor-btn">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+                                Cobrar siguiente
+                            </button>
+                            <button class="btn-action-sm" id="btn-send-reminders" title="Enviar recordatorios por WhatsApp">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                                Recordatorios
+                            </button>
+                        </div>
+                    </div>
+                    <div class="debt-list" id="debt-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Clients View -->
+            <section id="view-clients" class="view">
+                <div class="view-content">
+                    <!-- Search & Filter -->
+                    <div class="search-bar">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="search-clients" placeholder="Buscar cliente..." class="search-input">
+                    </div>
+                    <div class="filter-chips" id="filter-chips">
+                        <button class="chip active" data-zone="ALL">Todos</button>
+                        <button class="chip" data-zone="SOL DE MAYO">Sol de Mayo</button>
+                        <button class="chip" data-zone="VILLA LA PUNTA">Villa La Punta</button>
+                        <button class="chip" data-zone="CHOYA">Choya</button>
+                        <button class="chip" data-zone="FRIAS">Frías</button>
+                    </div>
+                    <!-- Clients List -->
+                    <div class="clients-list" id="clients-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                <!-- FAB Add Client -->
+                <button class="fab" id="fab-add-client" title="Agregar Cliente">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+            </section>
+
+            <!-- Payments View -->
+            <section id="view-payments" class="view">
+                <div class="view-content">
+                    <div class="search-bar">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="search-payments" placeholder="Buscar cliente para cobrar..." class="search-input">
+                    </div>
+                    <div class="filter-chips" id="payment-filter-chips">
+                        <button class="chip active" data-zone="ALL">Todos</button>
+                        <button class="chip" data-zone="SOL DE MAYO">Sol de Mayo</button>
+                        <button class="chip" data-zone="VILLA LA PUNTA">Villa La Punta</button>
+                        <button class="chip" data-zone="CHOYA">Choya</button>
+                        <button class="chip" data-zone="FRIAS">Frías</button>
+                    </div>
+                    <!-- Payment Status Filter -->
+                    <div class="filter-chips status-filter">
+                        <button class="chip-status active" data-status="ALL">Todos</button>
+                        <button class="chip-status" data-status="PENDING">Pendientes</button>
+                        <button class="chip-status" data-status="PAID">Pagados</button>
+                    </div>
+                    <div class="section-header">
+                        <h2 class="section-title">Ruta de Cobro Prioritaria</h2>
+                    </div>
+                    <div id="route-list" class="route-list">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <div class="section-header">
+                        <h2 class="section-title">Todos los Clientes</h2>
+                    </div>
+                    <div class="payments-list" id="payments-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- MikroTik View -->
+            <section id="view-mikrotik" class="view">
+                <div class="view-content">
+                    <div class="section-header">
+                        <h2 class="section-title">MikroTik Dashboard</h2>
+                        <button class="btn-action-sm" id="btn-refresh-mikrotik" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-green);">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                            Refrescar
+                        </button>
+                    </div>
+
+                    <!-- Status Display -->
+                    <div class="mikrotik-stats-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px;">
+                        <div class="stat-card" style="background: var(--card-bg); border: 1px solid var(--border-color);">
+                            <span class="stat-label">Estado</span>
+                            <span class="stat-number" id="mk-status-text" style="font-size: 16px; color: #ff4d4d;">Desconectado</span>
+                        </div>
+                        <div class="stat-card" style="background: var(--card-bg); border: 1px solid var(--border-color);">
+                            <span class="stat-label">Uptime</span>
+                            <span class="stat-number" id="mk-uptime" style="font-size: 16px;">-</span>
+                        </div>
+                        <div class="stat-card" style="background: var(--card-bg); border: 1px solid var(--border-color);">
+                            <span class="stat-label">CPU Load</span>
+                            <span class="stat-number" id="mk-cpu" style="font-size: 16px;">0%</span>
+                        </div>
+                        <div class="stat-card" style="background: var(--card-bg); border: 1px solid var(--border-color);">
+                            <span class="stat-label">Memoria Libre</span>
+                            <span class="stat-number" id="mk-ram" style="font-size: 16px;">0 MB</span>
+                        </div>
+                    </div>
+
+                    
+
+                    <!-- Graph Section -->
+                    <div class='settings-group' style='padding: 15px;'>
+                        <h3 class='settings-group-title' style='margin-bottom: 12px; display: flex; justify-content: space-between;'>
+                            Tr�fico en Vivo (Mbps)
+                            <span style='font-size: 11px; font-weight: 400; opacity: 0.6;'>Ult. 60 seg.</span>
+
+                    <!-- Interface Selector -->
+                    <div style='margin-bottom: 12px;'>
+                        <select id='mk-interface-selector' class='setting-input' style='background: var(--bg-hover); border: 1px solid var(--border-color); color: var(--text-primary); padding: 5px 10px; border-radius: 6px; width: 100%; font-size: 13px;'>
+                            <option value='ALL'>Monitorear: Todas las Interfaces</option>
+                        </select>
+                    </div>
+
+                        </h3>
+                        <div style='height: 180px; width: 100%; position: relative;'>
+                            <canvas id='mk-traffic-chart'></canvas>
+                        </div>
+                        <div style='display: flex; gap: 15px; margin-top: 10px; justify-content: center; font-size: 10px;'>
+                            <span style='display: flex; align-items: center; gap: 5px;'>
+                                <div style='width: 8px; height: 8px; background: #3b82f6; border-radius: 2px;'></div> RX (Bajada)
+                            </span>
+                            <span style='display: flex; align-items: center; gap: 5px;'>
+                                <div style='width: 8px; height: 8px; background: #ef4444; border-radius: 2px;'></div> TX (Subida)
+                            </span>
+                        </div>
+                    </div>
+<div class="settings-group">`n                        <h3 class="settings-group-title">Interfaces Activas</h3>
+                        <div id="mk-interfaces-list" style="display: flex; flex-direction: column; gap: 8px;">
+                            <p style="color: var(--text-secondary); font-size: 14px; text-align: center; padding: 20px;">Conéctese para ver las interfaces</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <h3 class="settings-group-title">Configuración del Router</h3>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Host / IP</span>
+                                <span class="setting-desc">Dirección IP del Router</span>
+                            </div>
+                            <div class="setting-control">
+                                <input type="text" id="setting-mikrotik-host" class="setting-input" placeholder="192.168.20.1">
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Puerto API</span>
+                            </div>
+                            <div class="setting-control">
+                                <input type="number" id="setting-mikrotik-port" class="setting-input" value="8728">
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Usuario</span>
+                            </div>
+                            <div class="setting-control">
+                                <input type="text" id="setting-mikrotik-user" class="setting-input" placeholder="admin">
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Contraseña</span>
+                            </div>
+                            <div class="setting-control" style="position: relative;">
+                                <input type="password" id="setting-mikrotik-password" class="setting-input" placeholder="********" style="padding-right: 40px;">
+                                <button type="button" id="toggle-mikrotik-password" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Address List (Cortes)</span>
+                            </div>
+                            <div class="setting-control">
+                                <input type="text" id="setting-mikrotik-list" class="setting-input" value="morosos">
+                            </div>
+                        </div>
+                        <div class="settings-actions" style="display: flex; gap: 10px;">
+                            <button class="btn-settings-action" id="btn-test-mikrotik" style="flex: 1; background: rgba(16, 185, 129, 0.1); color: var(--accent-green); border-color: var(--accent-green);">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                                Probar Conexión
+                            </button>
+                            <button class="btn-settings-action" id="btn-reboot-mikrotik" style="flex: 1; background: rgba(255, 77, 77, 0.1); color: #ff4d4d; border-color: #ff4d4d;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2.5 2v6h6M21.5 22v-6h-6"/><path d="M22 11.5A10 10 0 0 0 3.2 7.2L2.5 8M2 12.5a10 10 0 0 0 18.8 4.2l.7-.8"/></svg>
+                                Reiniciar Router
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings View -->
+            <section id="view-settings" class="view">
+                <div class="view-content">
+                    <div class="settings-group">
+                        <h3 class="settings-group-title">Configuración General</h3>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Monto por defecto</span>
+                                <span class="setting-desc">Monto mensual estándar del servicio</span>
+                            </div>
+                            <div class="setting-control">
+                                <input type="number" id="setting-default-amount" class="setting-input" value="30000" min="0" step="500">
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Teléfono de contacto</span>
+                                <span class="setting-desc">Número para mensajes de WhatsApp</span>
+                            </div>
+                            <div class="setting-control">
+                                <input type="tel" id="setting-phone" class="setting-input" value="3855374835">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-group">
+                        <h3 class="settings-group-title">Automatización WhatsApp</h3>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Recordatorio de vencimiento</span>
+                                <span class="setting-desc">Día 10 - Recordar a clientes sin pago</span>
+                            </div>
+                            <div class="setting-control">
+                                <label class="toggle">
+                                    <input type="checkbox" id="setting-reminder-10" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Aviso de servicio reducido</span>
+                                <span class="setting-desc">Día 13 - Notificar reducción de servicio</span>
+                            </div>
+                            <div class="setting-control">
+                                <label class="toggle">
+                                    <input type="checkbox" id="setting-reminder-13" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Mensaje de recordatorio (Día 10)</span>
+                                <span class="setting-desc">Variables: {nombre}, {monto}, {telefono}</span>
+                            </div>
+                            <div class="setting-control full-width">
+                                <textarea id="setting-msg-10" class="setting-textarea" rows="6">Hola {nombre}, te saludamos de INTER RED 🌐. Te recordamos que hoy día 10 vence tu abono mensual de internet por un valor de ${monto}.
+
+Evitá recargos y cortes en el servicio. Si ya realizaste el pago, por favor enviá el comprobante por este medio.
+
+📍 Ubicación: Choya, Sgo. del Estero.
+📞 Dudas: {telefono}.</textarea>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Mensaje de reducción (Día 13)</span>
+                                <span class="setting-desc">Variables: {nombre}, {monto}, {telefono}</span>
+                            </div>
+                            <div class="setting-control full-width">
+                                <textarea id="setting-msg-13" class="setting-textarea" rows="6">⚠️ AVISO IMPORTANTE - INTER RED ⚠️
+
+Hola {nombre}, no hemos registrado el pago de tu servicio este mes.
+
+Te informamos que a partir de este momento tu velocidad de navegación ha sido reducida. Para normalizar tu servicio, por favor regularizá tu deuda de ${monto}.
+
+Contacto: {telefono}. ¡Gracias!</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-group">
+                        <h3 class="settings-group-title">Datos y Mantenimiento</h3>
+                        <div class="settings-actions">
+                            <button class="btn-settings-action" id="btn-cleanup-db" style="background: rgba(16, 185, 129, 0.1); color: var(--accent-green); border-color: var(--accent-green);">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                Limpiar Duplicados (Clientes/Pagos)
+                            </button>
+                            <button class="btn-settings-action" id="btn-export-data">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                Exportar Datos (JSON)
+                            </button>
+                            <button class="btn-settings-action" id="btn-import-data">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                Importar Datos (JSON)
+                            </button>
+                            <input type="file" id="import-file-input" accept=".json" class="hidden">
+                        </div>
+                    </div>
+                    <div class="app-info">
+                        <p>INTER RED Gestión v1.0</p>
+                        <p>Choya, Santiago del Estero</p>
+                        <p>Tel: 3855374835</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Morosos View -->
+            <section id="view-morosos" class="view">
+                <div class="view-content">
+                    <div class="section-header">
+                        <h2 class="section-title">Gestión de Morosos (Día 13+)</h2>
+                        <div class="header-actions-group" style="display: flex; gap: 8px;">
+                             <button class="btn-action-sm" id="btn-add-moroso-manual" style="background: rgba(59, 130, 246, 0.15); color: var(--accent-blue);">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                Agregar
+                            </button>
+                             <button class="btn-action-sm" id="btn-sync-morosos">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                Sincronizar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="morosos-stats-grid">
+                        <div class="stat-card stat-debt">
+                            <span class="stat-number" id="morosos-count">0</span>
+                            <span class="stat-label">Total a Suspender</span>
+                        </div>
+                        <div class="stat-card stat-reduced">
+                            <span class="stat-number" id="morosos-suspended-count">0</span>
+                            <span class="stat-label">Suspendidos Mkt</span>
+                        </div>
+                    </div>
+
+                    <div class="search-bar">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="search-morosos" placeholder="Buscar moroso..." class="search-input">
+                    </div>
+
+                    <div class="morosos-list" id="morosos-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </section>
+            <!-- Notifications View -->
+            <section id="view-notifications" class="view">
+                <div class="view-content">
+                    <div class="section-header">
+                        <h2 class="section-title">Notificaciones</h2>
+                    </div>
+                    <div id="notifications-list" class="notifications-list">
+                        <div class="empty-state">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                            </svg>
+                            <h3>Sin notificaciones</h3>
+                            <p>Te avisaremos cuando haya novedades importantes.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" data-view="dashboard" id="nav-dashboard">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                <span>Dashboard</span>
+            </button>
+            <button class="nav-item" data-view="clients" id="nav-clients">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span>Clientes</span>
+            </button>
+            <button class="nav-item" data-view="payments" id="nav-payments">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                <span>Cobros</span>
+            </button>
+            <button class="nav-item" data-view="morosos" id="nav-morosos">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span>Morosos</span>
+            </button>
+            <button class="nav-item" data-view="mikrotik" id="nav-mikrotik">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+                <span>MikroTik</span>
+            </button>
+            <button class="nav-item" data-view="settings" id="nav-settings">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <span>Ajustes</span>
+            </button>
+        </nav>
+
+        <!-- Modals -->
+        <!-- Add/Edit Client Modal -->
+        <div class="modal-overlay hidden" id="modal-client">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2 class="modal-title" id="modal-client-title">Nuevo Cliente</h2>
+                    <button class="modal-close" id="modal-client-close">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-client">
+                        <input type="hidden" id="client-id">
+                        <div class="form-group">
+                            <label class="form-label" for="client-nombre">Nombre *</label>
+                            <input type="text" id="client-nombre" class="form-input" placeholder="Ej: Juan" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="client-apellido">Apellido *</label>
+                            <input type="text" id="client-apellido" class="form-input" placeholder="Ej: Pérez" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="client-whatsapp">WhatsApp *</label>
+                            <div class="input-with-prefix">
+                                <span class="input-prefix">+54</span>
+                                <input type="tel" id="client-whatsapp" class="form-input with-prefix" placeholder="3855XXXXXX" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="client-zona">Zona *</label>
+                            <select id="client-zona" class="form-select" required>
+                                <option value="">Seleccionar zona...</option>
+                                <option value="SOL DE MAYO">Sol de Mayo</option>
+                                <option value="VILLA LA PUNTA">Villa La Punta</option>
+                                <option value="CHOYA">Choya</option>
+                                <option value="FRIAS">Frías</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="client-estado">Estado</label>
+                            <select id="client-estado" class="form-select">
+                                <option value="Activo">Activo</option>
+                                <option value="Deudor">Deudor</option>
+                                <option value="Reducido">Reducido</option>
+                            </select>
+                        </div>
+                        <div class="form-divider">Datos Técnicos</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="client-ip">Dirección IP</label>
+                                <input type="text" id="client-ip" class="form-input" placeholder="192.168.1.10">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="client-mac">Número MAC</label>
+                                <input type="text" id="client-mac" class="form-input" placeholder="00:11:22:33:44:55">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="client-antena">Antena</label>
+                                <input type="text" id="client-antena" class="form-input" placeholder="LiteBeam M5">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="client-router">Router</label>
+                                <input type="text" id="client-router" class="form-input" placeholder="TP-Link 840N">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary btn-full" id="btn-save-client">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                            Guardar Cliente
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Modal -->
+        <div class="modal-overlay hidden" id="modal-payment">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2 class="modal-title">Registrar Pago</h2>
+                    <button class="modal-close" id="modal-payment-close">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="payment-client-info" id="payment-client-info">
+                        <!-- Filled by JS -->
+                    </div>
+                    <form id="form-payment">
+                        <input type="hidden" id="payment-client-id">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="payment-mes">Mes</label>
+                                <select id="payment-mes" class="form-select" required>
+                                    <option value="1">Enero</option>
+                                    <option value="2">Febrero</option>
+                                    <option value="3">Marzo</option>
+                                    <option value="4">Abril</option>
+                                    <option value="5">Mayo</option>
+                                    <option value="6">Junio</option>
+                                    <option value="7">Julio</option>
+                                    <option value="8">Agosto</option>
+                                    <option value="9">Septiembre</option>
+                                    <option value="10">Octubre</option>
+                                    <option value="11">Noviembre</option>
+                                    <option value="12">Diciembre</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="payment-anio">Año</label>
+                                <input type="number" id="payment-anio" class="form-input" min="2024" max="2030" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="payment-monto">Monto ($)</label>
+                            <input type="number" id="payment-monto" class="form-input form-input-large" min="0" step="500" required>
+                        </div>
+                        <div class="quick-amounts">
+                            <button type="button" class="quick-amount-btn" data-amount="15000">$15.000</button>
+                            <button type="button" class="quick-amount-btn" data-amount="20000">$20.000</button>
+                            <button type="button" class="quick-amount-btn active" data-amount="30000">$30.000</button>
+                            <button type="button" class="quick-amount-btn" data-amount="35000">$35.000</button>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="payment-medio">Medio de Pago</label>
+                            <select id="payment-medio" class="form-select" required>
+                                <option value="Transferencia">Transferencia</option>
+                                <option value="Efectivo">Efectivo</option>
+                                <option value="MercadoPago">MercadoPago</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="payment-fecha">Fecha de Pago</label>
+                            <input type="date" id="payment-fecha" class="form-input" required>
+                        </div>
+                        <button type="submit" class="btn-success btn-full" id="btn-save-payment">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                            Registrar Pago
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Client Detail Modal -->
+        <div class="modal-overlay hidden" id="modal-client-detail">
+            <div class="modal modal-detail">
+                <div class="modal-header">
+                    <h2 class="modal-title" id="detail-client-name">Cliente</h2>
+                    <button class="modal-close" id="modal-detail-close">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="modal-body" id="detail-client-body">
+                    <!-- Filled by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Moroso Modal -->
+        <div class="modal-overlay hidden" id="modal-add-moroso">
+            <div class="modal modal-sm">
+                <div class="modal-header">
+                    <h2 class="modal-title">Agregar Moroso</h2>
+                    <button class="modal-close" id="modal-moroso-close">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Buscar cliente</label>
+                        <input type="text" id="moroso-search-client" class="form-input" placeholder="Nombre, apellido o zona...">
+                    </div>
+                    <div id="moroso-client-results" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirm Modal -->
+        <div class="modal-overlay hidden" id="modal-confirm">
+            <div class="modal modal-sm">
+                <div class="modal-header">
+                    <h2 class="modal-title" id="confirm-title">Confirmar</h2>
+                </div>
+                <div class="modal-body">
+                    <p class="confirm-message" id="confirm-message">¿Está seguro?</p>
+                    <div class="confirm-actions">
+                        <button class="btn-secondary" id="confirm-cancel">Cancelar</button>
+                        <button class="btn-danger" id="confirm-ok">Confirmar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Container -->
+        <div class="toast-container" id="toast-container"></div>
+    </div>
+
+    <script type="module" src="/js/app.js"></script>
+    <!--
+    <script>
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('Service Worker registered:', reg.scope))
+                    .catch(err => console.error('SW registration failed:', err));
+            });
+        }
+    </script>
+    -->
+</body>
+</html>
+
+
