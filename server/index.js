@@ -26,7 +26,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.get("/", (req, res) => {
-  res.send("API funcionando OK");
+  res.send("API INTERRED FUNCIONANDO OK");
 });
 
 app.get("/api", (req, res) => {
@@ -284,11 +284,6 @@ app.post('/api/wisp/database', (req, res) => {
 });
 
 // ---- Start Server ----
-app.listen(PORT, () => {
-    console.log('');
-    console.log('  ╔══════════════════════════════════════╗');
-    console.log('  ║   🌐 InterRed MikroTik API Server   ║');
-    console.log(`  ║   → http://localhost:${PORT}            ║`);
-    console.log('  ╚══════════════════════════════════════╝');
-    console.log('');
+app.listen(process.env.PORT || 3000, () => {
+  console.log("Servidor corriendo");
 });
