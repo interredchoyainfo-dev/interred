@@ -17,7 +17,9 @@ const CONFIG_PATH = path.join(__dirname, '..', 'data', 'site_config.json');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(cors({
+  origin: ['https://www.interred.com.ar', 'https://interred-1.onrender.com']
+}));
 app.use(express.json());
 
 // ---- Health Check ----
