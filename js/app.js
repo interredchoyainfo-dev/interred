@@ -233,8 +233,7 @@ const App = {
         // 🟢 HEARTBEAT SERVIDOR (Check every 10s)
         setInterval(async () => {
             try {
-                const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:3000' : '';
-                await fetch(`${baseUrl}/api/health`);
+                await fetch(`${API_URL}/api/health`);
                 showServerStatus("online");
             } catch {
                 showServerStatus("offline");
