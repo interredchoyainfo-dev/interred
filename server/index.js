@@ -18,7 +18,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
-  origin: ['https://www.interred.com.ar', 'https://interred-1.onrender.com']
+  origin: 'https://interred-1.onrender.com'
 }));
 app.use(express.json());
 
