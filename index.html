@@ -6,7 +6,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" href="/favicon.ico" />
-    <title>Inter Red - High-Velocity Connectivity</title>
+    <title>Inter Red - Conectividad de Alta Velocidad</title>
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
@@ -21,7 +21,7 @@
         theme: {
           extend: {
             colors: {
-              primary: "#E30613", // Velocity Red
+              primary: "#E30613",
               "on-primary": "#ffffff",
               background: "#ffffff",
               "on-background": "#000000",
@@ -66,27 +66,133 @@
             -webkit-text-stroke: 1px rgba(255,255,255,0.3);
             color: transparent;
         }
+
+        /* ===== MOBILE MENU ===== */
+        .mobile-menu {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: rgba(0,0,0,0.95);
+            z-index: 100;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            animation: fadeIn 0.3s ease;
+        }
+        .mobile-menu.open {
+            display: flex;
+        }
+        .mobile-menu a {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .mobile-menu a:hover {
+            color: #E30613;
+        }
+        .mobile-menu-close {
+            position: absolute;
+            top: 1.25rem;
+            right: 1.25rem;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .hamburger-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .hamburger-btn span {
+            display: block;
+            width: 24px;
+            height: 2.5px;
+            background: #1a1a1a;
+            border-radius: 2px;
+            transition: all 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* ===== RESPONSIVE HELPERS ===== */
+        @media (max-width: 767px) {
+            .hero-title-mobile {
+                font-size: 2.5rem !important;
+                line-height: 1.1 !important;
+            }
+            .hero-desc-mobile {
+                font-size: 1rem !important;
+            }
+            .plans-title-mobile {
+                font-size: 2rem !important;
+            }
+            .plan-price-mobile {
+                font-size: 2.8rem !important;
+            }
+            .footer-grid-mobile {
+                text-align: center;
+            }
+        }
     </style>
 </head>
 <body class="bg-background font-body text-on-background selection:bg-primary/20 selection:text-primary">
     <!-- TopAppBar Component -->
     <nav class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md shadow-[0_10px_30px_rgba(227,6,19,0.08)]">
-        <div class="flex justify-between items-center px-8 py-4 max-w-7xl mx-auto">
-            <a href="home.html" class="text-2xl font-black italic tracking-tighter hover:scale-105 transition-transform active:scale-95 duration-200">
+        <div class="flex justify-between items-center px-4 sm:px-8 py-3 sm:py-4 max-w-7xl mx-auto">
+            <!-- Logo: Inter (rojo) Red (negro) -->
+            <a href="home.html" class="text-xl sm:text-2xl font-black italic tracking-tighter hover:scale-105 transition-transform active:scale-95 duration-200">
                 <span class="text-primary">Inter</span> <span class="text-black">Red</span>
             </a>
+            <!-- Desktop Nav -->
             <div class="hidden md:flex items-center gap-8 font-plus-jakarta text-sm font-bold tracking-tight">
                 <a class="text-red-600 border-b-2 border-red-600 pb-1" href="home.html#planes">Planes</a>
                 <a class="text-neutral-700 hover:text-red-500 transition-all duration-200" href="cobertura.html">Cobertura</a>
                 <a class="text-neutral-700 hover:text-red-500 transition-all duration-200" href="soporte.html">Soporte</a>
             </div>
-            <div class="flex items-center gap-4">
-                <a href="login.html" class="bg-primary text-on-primary px-6 py-2 rounded-lg font-bold text-sm tracking-tight hover:scale-95 active:scale-90 transition-all">
+            <div class="flex items-center gap-3">
+                <a href="login.html" class="bg-primary text-on-primary px-4 sm:px-6 py-2 rounded-lg font-bold text-xs sm:text-sm tracking-tight hover:scale-95 active:scale-90 transition-all">
                     Admin
                 </a>
+                <!-- Hamburger (solo mobile) -->
+                <button class="hamburger-btn md:hidden" id="btn-mobile-menu" aria-label="Menú">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
             </div>
         </div>
     </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div class="mobile-menu" id="mobile-menu">
+        <button class="mobile-menu-close" id="btn-close-menu" aria-label="Cerrar menú">&times;</button>
+        <a href="home.html#planes" onclick="closeMobileMenu()">Planes</a>
+        <a href="cobertura.html">Cobertura</a>
+        <a href="soporte.html">Soporte</a>
+        <a href="login.html" style="color: #E30613;">Admin</a>
+    </div>
+
     <main>
         <!-- Hero Section: High Velocity -->
         <section class="relative min-h-screen flex items-center pt-20 overflow-hidden bg-black">
@@ -96,20 +202,20 @@
                 <!-- Grid Pattern -->
                 <div class="absolute inset-0 opacity-[0.03]" style="background-image: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px); background-size: 50px 50px;"></div>
             </div>
-            <div class="relative z-10 max-w-7xl mx-auto px-8 w-full grid md:grid-cols-2 gap-16 items-center">
-                <div class="space-y-8">
+            <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-8 w-full grid md:grid-cols-2 gap-8 md:gap-16 items-center">
+                <div class="space-y-6 sm:space-y-8 text-center md:text-left">
 
-                    <h1 id="hero-title" class="font-headline text-6xl md:text-8xl font-extrabold text-white leading-tight tracking-tighter">
+                    <h1 id="hero-title" class="font-headline text-4xl sm:text-6xl md:text-8xl font-extrabold text-white leading-tight tracking-tighter hero-title-mobile">
                         CONECTANDOTE <span class="text-primary">AL MUNDO</span>
                     </h1>
-                    <p id="hero-desc" class="text-neutral-400 text-lg md:text-xl font-medium leading-relaxed max-w-xl">
+                    <p id="hero-desc" class="text-neutral-400 text-base sm:text-lg md:text-xl font-medium leading-relaxed max-w-xl mx-auto md:mx-0 hero-desc-mobile">
                         Experimenta la velocidad del futuro con nuestra red de internet de alta fidelidad. Sin cortes, sin esperas, solo conexión pura.
                     </p>
-                    <div class="flex flex-wrap gap-4 pt-4">
-                        <a class="bg-primary text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-red-700 transition-all shadow-lg shadow-red-600/20" href="#planes">
+                    <div class="flex flex-col sm:flex-row flex-wrap gap-4 pt-2 sm:pt-4 items-center md:items-start justify-center md:justify-start">
+                        <a class="bg-primary text-white px-8 py-4 rounded-lg font-bold text-base sm:text-lg hover:bg-red-700 transition-all shadow-lg shadow-red-600/20 w-full sm:w-auto text-center" href="#planes">
                             Ver Planes
                         </a>
-                        <button class="bg-transparent border-2 border-white/20 text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-white/10 transition-all">
+                        <button class="bg-transparent border-2 border-white/20 text-white px-8 py-4 rounded-lg font-bold text-base sm:text-lg hover:bg-white/10 transition-all w-full sm:w-auto">
                             Saber Más
                         </button>
                     </div>
@@ -118,62 +224,64 @@
             </div>
         </section>
         <!-- Planes Section -->
-        <section class="py-32 px-8 bg-white" id="planes">
+        <section class="py-16 sm:py-32 px-4 sm:px-8 bg-white" id="planes">
             <div class="max-w-7xl mx-auto">
-                <div class="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-20 border-l-8 border-primary pl-8">
+                <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 sm:gap-8 mb-12 sm:mb-20 border-l-4 sm:border-l-8 border-primary pl-4 sm:pl-8">
                     <div class="space-y-2">
-                        <h2 class="font-headline text-5xl font-black text-black tracking-tighter uppercase italic">Planes a tu Medida</h2>
-                        <p class="text-neutral-500 max-w-xl text-lg font-medium">Soluciones de alta fidelidad para cada necesidad digital.</p>
+                        <h2 class="font-headline text-3xl sm:text-5xl font-black text-black tracking-tighter uppercase italic plans-title-mobile">Planes a tu Medida</h2>
+                        <p class="text-neutral-500 max-w-xl text-base sm:text-lg font-medium">Soluciones de alta fidelidad para cada necesidad digital.</p>
                     </div>
                     <div class="text-sm font-bold text-neutral-400 uppercase tracking-widest">Precios Finales</div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div class="bg-white p-10 rounded-2xl border border-neutral-100 hover:border-primary/20 transition-all duration-500 group">
-                        <div class="mb-10">
-                            <span class="material-symbols-outlined text-neutral-400 group-hover:text-primary text-5xl mb-6 transition-colors" data-icon="home">home</span>
-                            <h3 class="font-headline text-2xl font-black text-black mb-3 italic uppercase">Plan Hogar</h3>
-                            <p class="text-neutral-500 font-medium leading-relaxed">Streaming y navegación fluida para toda la familia.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+                    <div class="bg-white p-6 sm:p-10 rounded-2xl border border-neutral-100 hover:border-primary/20 transition-all duration-500 group">
+                        <div class="mb-6 sm:mb-10">
+                            <span class="material-symbols-outlined text-neutral-400 group-hover:text-primary text-4xl sm:text-5xl mb-4 sm:mb-6 transition-colors" data-icon="home">home</span>
+                            <h3 class="font-headline text-xl sm:text-2xl font-black text-black mb-2 sm:mb-3 italic uppercase">Plan Hogar</h3>
+                            <p class="text-neutral-500 font-medium leading-relaxed text-sm sm:text-base">Streaming y navegación fluida para toda la familia.</p>
                         </div>
                         <div class="flex items-baseline gap-1 mb-2">
-                            <span class="text-2xl font-black text-black opacity-20">$</span>
-                            <span id="price-hogar" class="text-5xl font-black text-black">30.000</span>
+                            <span class="text-xl sm:text-2xl font-black text-black opacity-20">$</span>
+                            <span id="price-hogar" class="text-3xl sm:text-5xl font-black text-black plan-price-mobile">30.000</span>
                         </div>
-                        <ul class="space-y-5 mb-10">
+                        <ul class="space-y-5 mb-6 sm:mb-10">
                             <!-- Megas removidos a pedido del usuario -->
                         </ul>
-                        <a class="block text-center border-2 border-black text-black font-black uppercase italic py-4 rounded-lg hover:bg-black hover:text-white transition-all tracking-tighter" href="https://wa.me/3855374835">Consultar</a>
+                        <a class="block text-center border-2 border-black text-black font-black uppercase italic py-3 sm:py-4 rounded-lg hover:bg-black hover:text-white transition-all tracking-tighter text-sm sm:text-base" href="https://wa.me/3855374835">Consultar</a>
                     </div>
                     <!-- Plan Gaming -->
-                    <div class="bg-black p-10 rounded-2xl relative shadow-2xl shadow-primary/10 overflow-hidden transform md:-translate-y-4">
-                        <div class="absolute top-0 right-0 bg-primary text-white px-6 py-2 rounded-bl-lg font-black text-[10px] uppercase tracking-[0.2em] italic">Recomendado</div>
-                        <div class="mb-10 text-white">
-                            <span class="material-symbols-outlined text-primary text-5xl mb-6" data-icon="sports_esports">sports_esports</span>
-                            <h3 class="font-headline text-2xl font-black mb-3 italic uppercase">Plan Gaming</h3>
-                            <p class="text-neutral-400 font-medium leading-relaxed">Baja latencia optimizada para gamers profesionales.</p>
+                    <div class="bg-black p-6 sm:p-10 rounded-2xl relative shadow-2xl shadow-primary/10 overflow-hidden transform md:-translate-y-4">
+                        <div class="absolute top-0 right-0 bg-primary text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-bl-lg font-black text-[9px] sm:text-[10px] uppercase tracking-[0.2em] italic">Recomendado</div>
+                        <div class="mb-6 sm:mb-10 text-white">
+                            <span class="material-symbols-outlined text-primary text-4xl sm:text-5xl mb-4 sm:mb-6" data-icon="sports_esports">sports_esports</span>
+                            <h3 class="font-headline text-xl sm:text-2xl font-black mb-2 sm:mb-3 italic uppercase">Plan Gaming</h3>
+                            <p class="text-neutral-400 font-medium leading-relaxed text-sm sm:text-base">Baja latencia optimizada para gamers profesionales.</p>
                         </div>
                         <div class="flex items-baseline gap-1 mb-2">
-                            <span class="text-2xl font-black text-white/30">$</span>
-                            <span id="price-gaming" class="text-5xl font-black text-white">45.000</span>
+                            <span class="text-xl sm:text-2xl font-black text-white/30">$</span>
+                            <span id="price-gaming" class="text-3xl sm:text-5xl font-black text-white plan-price-mobile">45.000</span>
                         </div>
-                        <ul class="space-y-5 mb-10 text-white">
+                        <ul class="space-y-5 mb-6 sm:mb-10 text-white">
                             <!-- Megas removidos a pedido del usuario -->
                         </ul>
-                        <a class="block text-center bg-primary text-white font-black uppercase italic py-4 rounded-lg hover:bg-red-700 transition-all tracking-tighter" href="https://wa.me/3855374835">Consultar</a>
+                        <a class="block text-center bg-primary text-white font-black uppercase italic py-3 sm:py-4 rounded-lg hover:bg-red-700 transition-all tracking-tighter text-sm sm:text-base" href="https://wa.me/3855374835">Consultar</a>
                     </div>
 
                 </div>
             </div>
         </section>
         <!-- Footer Component -->
-        <footer class="bg-neutral-950 w-full py-20 border-t border-white/5" id="soporte">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-12 px-8 max-w-7xl mx-auto">
-                <div class="space-y-6">
-                    <div class="font-bold text-white text-3xl italic font-black tracking-tighter uppercase">Inter Red</div>
-                    <p class="text-neutral-400 font-medium leading-relaxed max-w-xs">© 2024 Inter Red. Conectando al mundo.</p>
+        <footer class="bg-neutral-950 w-full py-12 sm:py-20 border-t border-white/5" id="soporte">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-12 px-4 sm:px-8 max-w-7xl mx-auto footer-grid-mobile">
+                <div class="space-y-4 sm:space-y-6">
+                    <div class="font-bold text-white text-2xl sm:text-3xl italic font-black tracking-tighter">
+                        <span style="color:#E30613">Inter</span> Red
+                    </div>
+                    <p class="text-neutral-400 font-medium leading-relaxed max-w-xs mx-auto md:mx-0">© 2024 Inter Red. Conectando al mundo.</p>
                 </div>
-                <div class="space-y-6">
+                <div class="space-y-4 sm:space-y-6">
                     <h4 class="text-white font-bold uppercase text-xs tracking-widest text-primary">Redes Sociales</h4>
-                    <div class="flex gap-6">
+                    <div class="flex gap-6 justify-center md:justify-start">
                         <a class="text-neutral-400 hover:text-primary transition-colors" href="https://www.facebook.com/interred.net/" target="_blank">
                             <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/></svg>
                         </a>
@@ -185,11 +293,34 @@
             </div>
         </footer>
     </main>
+
     <script>
-        // CMS Integration - Load dynamic content
+        // ===== MOBILE MENU =====
+        const btnOpen = document.getElementById('btn-mobile-menu');
+        const btnClose = document.getElementById('btn-close-menu');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        btnOpen.addEventListener('click', () => {
+            mobileMenu.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        });
+        btnClose.addEventListener('click', closeMobileMenu);
+
+        function closeMobileMenu() {
+            mobileMenu.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        // Close on link click
+        mobileMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', closeMobileMenu);
+        });
+
+        // ===== CMS Integration =====
         async function loadCmsContent() {
             try {
-                const res = await fetch('http://localhost:3001/api/cms/config');
+                const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:3000' : '';
+                const res = await fetch(`${baseUrl}/api/cms/config`);
                 const data = await res.json();
                 
                 if (data.hero && data.hero.title) {
@@ -224,3 +355,5 @@
     </script>
 </body>
 </html>
+</CodeContent>
+<parameter name="Description">Complete rewrite of index.html to make the landing page fully responsive for mobile devices. Added hamburger menu, responsive typography, responsive spacing, and ensured the logo reads 'Inter Red' (Inter in red, Red in black) consistently everywhere.
