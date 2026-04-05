@@ -22,7 +22,9 @@ app.use(cors({
   origin: [
     'https://interred-1.onrender.com',
     'https://www.interred.com.ar',
-    'https://interred.com.ar'
+    'https://interred.com.ar',
+    'http://localhost:5173',
+    'http://localhost:3000'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
@@ -292,7 +294,25 @@ app.post('/api/wisp/database', (req, res) => {
     }
 });
 
+// ---- Serve Frontend (Vite build output) ----
+const distPath = path.join(__dirname, '..', 'dist');
+app.use(express.static(distPath));
+
+// SPA fallback: any non-API route serves index.html
+app.get('*', (req, res) => {
+    // Don't catch API routes
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ error: 'Endpoint not found' });
+    }
+    const indexFile = path.join(distPath, 'index.html');
+    if (fs.existsSync(indexFile)) {
+        res.sendFile(indexFile);
+    } else {
+        res.status(404).send('Frontend not built. Run: npm run build');
+    }
+});
+
 // ---- Start Server ----
 app.listen(process.env.PORT || 3000, () => {
-  console.log("Servidor corriendo");
+  console.log(`Servidor corriendo en puerto ${process.env.PORT || 3000}`);
 });

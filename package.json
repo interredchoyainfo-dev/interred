@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "server": "node server/index.js",
-    "start": "start cmd /k \"npm run server\" && npm run dev"
+    "start": "node server/index.js"
   },
   "keywords": [],
   "author": "",
