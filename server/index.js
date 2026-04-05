@@ -17,8 +17,15 @@ const CONFIG_PATH = path.join(__dirname, '..', 'data', 'site_config.json');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Configuración para que acepte tus dos dominios (el de Render y el tuyo .com.ar)
 app.use(cors({
-  origin: 'https://interred-1.onrender.com'
+  origin: [
+    'https://interred-1.onrender.com',
+    'https://www.interred.com.ar',
+    'https://interred.com.ar'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 
