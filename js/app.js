@@ -93,12 +93,12 @@ async function safeFetch(url, options = {}) {
         } else {
             const text = await res.text();
             log("Respuesta no JSON:", text);
-            return { success: false, error: "Respuesta inválida del servidor" };
+            return { success: false, error: "Respuesta inválida del servidor", message: "Respuesta inválida del servidor" };
         }
     } catch (err) {
         log("Backend offline or error:", err);
         showServerStatus("offline");
-        return { success: false, error: "Servidor no disponible" };
+        return { success: false, error: "Servidor no disponible", message: "Servidor no disponible" };
     }
 }
 window.safeFetch = safeFetch;

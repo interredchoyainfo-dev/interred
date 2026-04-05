@@ -271,6 +271,27 @@
                     <div class="settings-group">
                         <h3 class="settings-group-title">Configuración del Router</h3>
                         <form id="form-mikrotik-config">
+                        <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 10px;">
+                            <div class="setting-info">
+                                <span class="setting-label">Selector de Router</span>
+                            </div>
+                            <div class="setting-control" style="width: 100%;">
+                                <select id="mk-router-selector" class="setting-input mb-2" style="margin-bottom: 8px;"></select>
+                                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                    <button type="button" class="btn-action-sm" id="btn-add-router" style="background: rgba(59,130,246,0.1); color: var(--accent-blue);">+ Nuevo Router</button>
+                                    <button type="button" class="btn-action-sm" id="btn-delete-router" style="background: rgba(239,68,68,0.1); color: #ef4444;">- Borrar Router</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Nombre del Router</span>
+                                <span class="setting-desc">Identificador interno</span>
+                            </div>
+                            <div class="setting-control">
+                                <input type="text" id="setting-mikrotik-name" class="setting-input" placeholder="Ej: Router Principal">
+                            </div>
+                        </div>
                         <div class="setting-item">
                             <div class="setting-info">
                                 <span class="setting-label">Host / IP</span>
@@ -317,13 +338,17 @@
                         </div>
                         </form>
                         <div class="settings-actions" style="display: flex; gap: 10px;">
-                            <button class="btn-settings-action" id="btn-test-mikrotik" style="flex: 1; background: rgba(16, 185, 129, 0.1); color: var(--accent-green); border-color: var(--accent-green);">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                                Probar Conexión
+                            <button type="button" class="btn-settings-action" id="btn-save-mikrotik" style="flex: 1; background: rgba(59, 130, 246, 0.1); color: var(--accent-blue); border-color: var(--accent-blue);">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                                Guardar
                             </button>
-                            <button class="btn-settings-action" id="btn-reboot-mikrotik" style="flex: 1; background: rgba(255, 77, 77, 0.1); color: #ff4d4d; border-color: #ff4d4d;">
+                            <button type="button" class="btn-settings-action" id="btn-test-mikrotik" style="flex: 1; background: rgba(16, 185, 129, 0.1); color: var(--accent-green); border-color: var(--accent-green);">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                                Probar
+                            </button>
+                            <button type="button" class="btn-settings-action" id="btn-reboot-mikrotik" style="flex: 1; background: rgba(255, 77, 77, 0.1); color: #ff4d4d; border-color: #ff4d4d;">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2.5 2v6h6M21.5 22v-6h-6"/><path d="M22 11.5A10 10 0 0 0 3.2 7.2L2.5 8M2 12.5a10 10 0 0 0 18.8 4.2l.7-.8"/></svg>
-                                Reiniciar Router
+                                Reiniciar
                             </button>
                         </div>
                     </div>

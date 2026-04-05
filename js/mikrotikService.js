@@ -115,7 +115,7 @@ export async function reduceClient(client) {
 export async function testMikrotikConnection(config) {
     try {
         const fetchFunc = window.safeFetch || fetch;
-        const data = await withTimeout(fetchFunc(`${API_URL}/test`, {
+        const data = await withTimeout(fetchFunc(`${API_URL}/api/mikrotik/test`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(config)
@@ -129,7 +129,7 @@ export async function testMikrotikConnection(config) {
 export async function getMikrotikStatus(config) {
     try {
         const fetchFunc = window.safeFetch || fetch;
-        const data = await withTimeout(fetchFunc(`${API_URL}/status`, {
+        const data = await withTimeout(fetchFunc(`${API_URL}/api/mikrotik/status`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(config)
@@ -143,7 +143,7 @@ export async function getMikrotikStatus(config) {
 export async function rebootMikrotik(config) {
     try {
         const fetchFunc = window.safeFetch || fetch;
-        const data = await withTimeout(fetchFunc(`${API_URL}/reboot`, {
+        const data = await withTimeout(fetchFunc(`${API_URL}/api/mikrotik/reboot`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(config)
