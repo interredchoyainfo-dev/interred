@@ -1,4 +1,3 @@
-import '../css/styles.css';
 import DB from './db.js';
 import SEED_DATA from './seed-data.js';
 import { API_URL } from './config.js';
