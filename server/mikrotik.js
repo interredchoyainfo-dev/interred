@@ -33,24 +33,46 @@ async function withMikrotik(config, callback) {
 export async function suspendClient(config, ip, clientName = 'Desconocido') {
     if (!isValidIP(ip)) throw new Error('IP inválida');
     const cleanIp = ip.split('/')[0];
+    const targetIp = ip.includes('/') ? ip : `${ip}/32`;
 
     return withMikrotik(config, async (api) => {
-        try {
-            console.log(`📉 Aplicando reducción de servicio a: ${clientName} (${cleanIp})`);
-            
-            await api.menu('/ip/firewall/address-list').add({
-                list: config.addressListName || 'morosos',
-                address: cleanIp,
-                comment: `Moroso: ${clientName}`
-            });
+        const queueMenu = api.menu('/queue/simple');
+        
+        // 1. Intentamos buscar primero por IP (Lo más seguro)
+        let queues = await queueMenu.where('target', targetIp).get();
 
-            return { success: true, message: 'Reducción de servicio aplicada' };
-        } catch (error) {
-            // Si ya está en la lista, el MikroTik dará error
-            if (error.message && error.message.includes("already exists")) {
-                return { success: true, message: 'El cliente ya estaba limitado' };
+        // 2. Si no lo encuentra por IP, probamos por nombre exacto
+        if (!queues || queues.length === 0) {
+            console.log(`⚠️ No se encontró por IP ${targetIp}, buscando por nombre: ${clientName}`);
+            queues = await queueMenu.where('name', clientName).get();
+        }
+
+        // 3. Si sigue sin aparecer, buscamos un nombre que "contenga" el texto (por si hay espacios extras)
+        if (!queues || queues.length === 0) {
+            const allQueues = await queueMenu.get();
+            queues = (allQueues || []).filter(q => q.name && q.name.toLowerCase().includes(clientName.toLowerCase()));
+        }
+
+        if (queues && queues.length > 0) {
+            try {
+                console.log(`📉 Aplicando reducción de servicio a: ${clientName} (${cleanIp})`);
+                
+                await api.menu('/ip/firewall/address-list').add({
+                    list: config.addressListName || 'morosos',
+                    address: cleanIp,
+                    comment: `Moroso: ${clientName}`
+                });
+
+                return { success: true, message: `Cliente ${queues[0].name} limitado por IP/Nombre.` };
+            } catch (error) {
+                // Si la ip ya estaba en la lista, devolvemos success silenciosamente
+                if (error.message && error.message.includes("already exists")) {
+                    return { success: true, message: `El cliente ${queues[0].name} ya estaba limitado` };
+                }
+                throw error;
             }
-            throw error;
+        } else {
+            throw new Error(`No se encontró al cliente por IP (${cleanIp}) ni por nombre en Simple Queues.`);
         }
     });
 }
