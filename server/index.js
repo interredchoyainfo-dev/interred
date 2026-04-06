@@ -33,7 +33,7 @@ app.use(express.json());
 
 // ---- Health Check ----
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', service: 'InterRed MikroTik API', timestamp: new Date().toISOString() });
+    res.json({ status: 'ok', message: 'Servidor INTER RED activo' });
 });
 
 app.get("/", (req, res) => {
