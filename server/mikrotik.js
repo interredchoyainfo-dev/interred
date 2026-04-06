@@ -32,56 +32,51 @@ async function withMikrotik(config, callback) {
 
 export async function suspendClient(config, ip, clientName = 'Desconocido') {
     if (!isValidIP(ip)) throw new Error('IP inválida');
-    const targetIp = ip.includes('/') ? ip : `${ip}/32`;
+    const cleanIp = ip.split('/')[0];
 
     return withMikrotik(config, async (api) => {
-        const queueMenu = api.menu('/queue/simple');
-        const results = await queueMenu.where('target', targetIp).get();
+        try {
+            console.log(`📉 Aplicando reducción de servicio a: ${clientName} (${cleanIp})`);
+            
+            await api.menu('/ip/firewall/address-list').add({
+                list: config.addressListName || 'morosos',
+                address: cleanIp,
+                comment: `Moroso: ${clientName}`
+            });
 
-        if (results.length === 0) {
-            return { success: false, message: `No se encontró Simple Queue para ${targetIp}` };
+            return { success: true, message: 'Reducción de servicio aplicada' };
+        } catch (error) {
+            // Si ya está en la lista, el MikroTik dará error
+            if (error.message && error.message.includes("already exists")) {
+                return { success: true, message: 'El cliente ya estaba limitado' };
+            }
+            throw error;
         }
-
-        const queueId = results[0]['.id'];
-        await queueMenu.set({
-            '.id': queueId,
-            disabled: 'no',
-            comment: `InterRed | LIMITADO | ${clientName} | ${new Date().toLocaleString()}`
-        });
-
-        return { 
-            success: true, 
-            action: 'suspended', 
-            ip, 
-            message: `Cliente ${clientName} (${ip}) limitado exitosamente.` 
-        };
     });
 }
 
 export async function activateClient(config, ip) {
     if (!isValidIP(ip)) throw new Error('IP inválida');
-    const targetIp = ip.includes('/') ? ip : `${ip}/32`;
+    const cleanIp = ip.split('/')[0];
 
     return withMikrotik(config, async (api) => {
-        const queueMenu = api.menu('/queue/simple');
-        const results = await queueMenu.where('target', targetIp).get();
+        const addressListMenu = api.menu('/ip/firewall/address-list');
+        const listName = config.addressListName || 'morosos';
+        const results = await addressListMenu.where('address', cleanIp).where('list', listName).get();
 
         if (results.length === 0) {
-            return { success: false, message: `No se encontró Simple Queue para ${targetIp}` };
+            // No estaba en la lista, consideramos que está activo
+            return { success: true, message: `El cliente ya estaba activo` };
         }
 
-        const queueId = results[0]['.id'];
-        await queueMenu.set({
-            '.id': queueId,
-            disabled: 'yes',
-            comment: `InterRed | ACTIVO | ${new Date().toLocaleString()}`
-        });
+        const itemId = results[0]['.id'];
+        await addressListMenu.remove(itemId);
 
         return { 
             success: true, 
             action: 'activated', 
             ip, 
-            message: `Cliente (${ip}) activado exitosamente.` 
+            message: `Servicio restaurado (Removido de morosos).` 
         };
     });
 }
@@ -191,18 +186,16 @@ export async function rebootRouter(config) {
 
 export async function getMorososList(config) {
     return withMikrotik(config, async (api) => {
-        const results = await api.menu('/queue/simple').get();
+        const addressListMenu = api.menu('/ip/firewall/address-list');
+        const listName = config.addressListName || 'morosos';
+        const results = await addressListMenu.where('list', listName).get();
 
-        // In our logic, disabled=false (enabled queue) means the client IS LIMITED
-        const suspended = (results || [])
-            .filter(q => q.disabled === 'false' || q.disabled === false)
-            .filter(q => q.comment && q.comment.includes('InterRed'))
-            .map(q => ({
-                id: q['.id'],
-                name: q.name,
-                target: q.target,
-                comment: q.comment
-            }));
+        const suspended = (results || []).map(item => ({
+            id: item['.id'],
+            name: item.comment || 'Desconocido', // guardamos el nombre en comment
+            target: item.address,
+            comment: item.comment
+        }));
 
         return { success: true, count: suspended.length, clients: suspended };
     });
