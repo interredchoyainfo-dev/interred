@@ -2,7 +2,7 @@ import { suspendClient } from './server/mikrotik.js';
 
 const config = {
     host: '181.209.118.162',
-    port: 8728,
+    port: 9728,
     user: 'interred_api',
     password: 'InterRed2026',
     addressListName: 'morosos'
