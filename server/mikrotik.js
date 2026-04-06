@@ -8,16 +8,17 @@ function isValidIP(ip) {
  * Connects to MikroTik and executes a callback with the API handle.
  */
 async function withMikrotik(config, callback) {
+    const port = parseInt(config.port) || 9728;
     const api = new RouterOSClient({
         host: config.host,
-        port: parseInt(config.port) || 8728,
+        port: port,
         user: config.user,
         password: config.password,
         keepalive: false
     });
 
     try {
-        console.log(`📡 Conectando a MikroTik en ${config.host}:${config.port || 8728}...`);
+        console.log(`📡 Conectando a MikroTik en ${config.host}:${port}...`);
         const client = await api.connect();
         const result = await callback(client);
         await api.close();
