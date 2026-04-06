@@ -126,19 +126,33 @@ export async function testMikrotikConnection(config) {
     }
 }
 
-export async function getMikrotikStatus(config) {
+async function getMikrotikStatus(config) {
     try {
-        const fetchFunc = window.safeFetch || fetch;
-        const data = await withTimeout(fetchFunc(`${API_URL}/api/mikrotik/status`, {
+        // Forzamos a que la petición vaya al Backend (interred.onrender.com)
+        const response = await fetch(`${API_URL}/api/mikrotik/status`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(config)
-        }));
-        return data;
-    } catch (e) {
-        return { success: false, message: 'Error obteniendo estado o Timeout.' };
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                host: config.host,
+                port: config.port || 9728, // Usamos el puerto que configuramos en el router
+                user: config.user,
+                password: config.password
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Error en la respuesta del servidor');
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('❌ Error conectando a la API:', error);
+        return { success: false, message: error.message };
     }
 }
+export { getMikrotikStatus };
 
 export async function rebootMikrotik(config) {
     try {
