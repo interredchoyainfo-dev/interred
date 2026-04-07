@@ -1,18 +1,24 @@
 <!DOCTYPE html>
-<html class="light" lang="es">
+<html class="dark" lang="es">
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <meta name="mobile-web-app-capable" content="yes">
-    <link rel="stylesheet" href="styles.css">
     <link rel="icon" href="/favicon.ico" />
-    <title>Inter Red - Conectividad de Alta Velocidad</title>
+    <title>Inter Red | El Pulso Digital del Choya</title>
+    
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    
     <!-- Icons -->
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    
+    <!-- GSAP for superior animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
     <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script id="tailwind-config">
@@ -22,338 +28,462 @@
           extend: {
             colors: {
               primary: "#E30613",
-              "on-primary": "#ffffff",
-              background: "#ffffff",
-              "on-background": "#000000",
-              surface: "#ffffff",
-              "on-surface": "#000000",
-              "surface-container": "#f4f4f4",
-              "surface-container-low": "#fafafa",
-              "surface-container-high": "#ebebeb",
-              outline: "#d1d1d1",
-              secondary: "#1a1a1a",
-              "on-secondary": "#ffffff",
+              "primary-glow": "rgba(227, 6, 19, 0.4)",
+              background: "#080808",
+              surface: "#121212",
+              "surface-highest": "#1a1a1a",
             },
             fontFamily: {
               headline: ["Plus Jakarta Sans", "sans-serif"],
-              body: ["Plus Jakarta Sans", "sans-serif"],
-              label: ["Plus Jakarta Sans", "sans-serif"],
-            },
-            borderRadius: {
-              DEFAULT: "0.5rem",
-              lg: "0.5rem",
-              xl: "0.75rem",
-              "2xl": "1rem",
-              "3xl": "1.5rem",
-              full: "9999px"
+              body: ["Manrope", "sans-serif"],
             },
           },
         },
       }
     </script>
+    
     <style>
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-        }
-        .velocity-blur {
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-        }
-        .speed-gradient {
-            background: linear-gradient(135deg, #000000 0%, #E30613 100%);
-        }
-        .text-stroke-white {
-            -webkit-text-stroke: 1px rgba(255,255,255,0.3);
-            color: transparent;
+        :root {
+            --accent: #E30613;
         }
 
-        /* ===== MOBILE MENU ===== */
-        .mobile-menu {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100vh;
-            background: rgba(0,0,0,0.95);
-            z-index: 100;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 2rem;
-            animation: fadeIn 0.3s ease;
+        body {
+            background-color: #080808;
+            color: #E5E2E1;
+            overflow-x: hidden;
         }
-        .mobile-menu.open {
-            display: flex;
+
+        /* The Digital Pulse Glow FX */
+        .pulse-glow {
+            position: relative;
         }
-        .mobile-menu a {
-            color: white;
-            font-size: 1.5rem;
-            font-weight: 800;
-            letter-spacing: -0.02em;
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-        .mobile-menu a:hover {
-            color: #E30613;
-        }
-        .mobile-menu-close {
+        .pulse-glow::after {
+            content: '';
             position: absolute;
-            top: 1.25rem;
-            right: 1.25rem;
-            background: none;
-            border: none;
-            color: white;
-            font-size: 2rem;
-            cursor: pointer;
-            width: 44px;
-            height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            inset: -20px;
+            background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            pointer-events: none;
+            z-index: -1;
         }
-        .hamburger-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 8px;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-        .hamburger-btn span {
-            display: block;
-            width: 24px;
-            height: 2.5px;
-            background: #1a1a1a;
-            border-radius: 2px;
-            transition: all 0.3s;
+        .pulse-glow:hover::after {
+            opacity: 1;
+            animation: digitalPulse 2s ease-in-out infinite;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+        @keyframes digitalPulse {
+            0%, 100% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.2); opacity: 0.6; }
         }
 
-        /* ===== RESPONSIVE HELPERS ===== */
-        @media (max-width: 767px) {
-            .hero-title-mobile {
-                font-size: 2.5rem !important;
-                line-height: 1.1 !important;
-            }
-            .hero-desc-mobile {
-                font-size: 1rem !important;
-            }
-            .plans-title-mobile {
-                font-size: 2rem !important;
-            }
-            .plan-price-mobile {
-                font-size: 2.8rem !important;
-            }
-            .footer-grid-mobile {
-                text-align: center;
-            }
+        .glass-nav {
+            background: rgba(8, 8, 8, 0.6);
+            backdrop-filter: blur(32px);
+            -webkit-backdrop-filter: blur(32px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
         }
+
+        .hero-bg {
+            background-image: url('fiber_optic_bg.png');
+            background-size: cover;
+            background-position: center;
+            opacity: 0.4;
+            filter: grayscale(0.5) contrast(1.2);
+            mix-blend-mode: screen;
+        }
+
+        /* Letter Animation Styles */
+        .stagger-letter {
+            display: inline-block;
+            opacity: 0;
+            transform: translateY(20px) rotateX(-90deg);
+            filter: blur(10px);
+        }
+
+        .parallax-wrap {
+            perspective: 1000px;
+        }
+
+        .floating-accent {
+            background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+            mix-blend-mode: screen;
+            pointer-events: none;
+        }
+
+        .plan-card {
+            background: rgba(26, 26, 26, 0.4);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .plan-card:hover {
+            border-color: var(--accent);
+            background: rgba(227, 6, 19, 0.05);
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 30px 60px -12px rgba(227, 6, 19, 0.15);
+        }
+
+        .plan-card-white {
+            background: #ffffff;
+            color: #0d0d0d;
+            border: none;
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 1.5px;
+            background: var(--accent);
+            transition: all 0.4s cubic-bezier(0.65, 0.05, 0.36, 1);
+            transform: translateX(-50%);
+        }
+
+        .nav-link:hover::after {
+            width: 100%;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #080808; }
+        ::-webkit-scrollbar-thumb { background: #E30613; border-radius: 10px; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .animate-float { animation: float 6s ease-in-out infinite; }
     </style>
 </head>
-<body class="bg-background font-body text-on-background selection:bg-primary/20 selection:text-primary">
-    <!-- TopAppBar Component -->
-    <nav class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md shadow-[0_10px_30px_rgba(227,6,19,0.08)]">
-        <div class="flex justify-between items-center px-4 sm:px-8 py-3 sm:py-4 max-w-7xl mx-auto">
-            <!-- Logo: Inter (rojo) Red (negro) -->
-            <a href="home.html" class="text-xl sm:text-2xl font-black italic tracking-tighter hover:scale-105 transition-transform active:scale-95 duration-200">
-                <span class="text-primary">Inter</span> <span class="text-black">Red</span>
+<body class="selection:bg-primary/40">
+    <!-- Navbar -->
+    <nav class="fixed top-0 w-full z-50 glass-nav">
+        <div class="flex justify-between items-center px-8 sm:px-16 py-5 max-w-[1600px] mx-auto">
+            <a href="index.html" class="flex items-center gap-2 group">
+                <div class="relative">
+                    <span class="text-3xl font-black italic tracking-tighter text-primary group-hover:scale-110 transition-transform block">Inter</span>
+                    <div class="absolute -inset-2 bg-primary/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity rounded-full"></div>
+                </div>
+                <span class="text-3xl font-black italic tracking-tighter text-white">Red</span>
             </a>
-            <!-- Desktop Nav -->
-            <div class="hidden md:flex items-center gap-8 font-plus-jakarta text-sm font-bold tracking-tight">
-                <a class="text-red-600 border-b-2 border-red-600 pb-1" href="home.html#planes">Planes</a>
-                <a class="text-neutral-700 hover:text-red-500 transition-all duration-200" href="cobertura.html">Cobertura</a>
-                <a class="text-neutral-700 hover:text-red-500 transition-all duration-200" href="soporte.html">Soporte</a>
+            
+            <div class="hidden lg:flex items-center gap-16 font-headline text-[10px] font-black uppercase tracking-[0.3em] text-neutral-500">
+                <a class="nav-link py-2 relative group hover:text-white transition-colors" href="#planes">Planes</a>
+                <a class="nav-link py-2 relative group hover:text-white transition-colors" href="cobertura.html">Cobertura</a>
+                <a class="nav-link py-2 relative group hover:text-white transition-colors" href="soporte.html">Soporte</a>
             </div>
-            <div class="flex items-center gap-3">
-                <a href="login.html" class="bg-primary text-on-primary px-4 sm:px-6 py-2 rounded-lg font-bold text-xs sm:text-sm tracking-tight hover:scale-95 active:scale-90 transition-all">
-                    Admin
+
+            <div class="flex items-center gap-6">
+                <a href="login.html" class="bg-primary hover:bg-red-700 text-white px-8 py-3 rounded-full font-headline font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-red-600/30">
+                    Admin Access
                 </a>
-                <!-- Hamburger (solo mobile) -->
-                <button class="hamburger-btn md:hidden" id="btn-mobile-menu" aria-label="Menú">
-                    <span></span>
-                    <span></span>
-                    <span></span>
+                <button class="lg:hidden flex flex-col gap-1.5 p-2" id="btn-mobile-menu">
+                    <span class="w-7 h-0.5 bg-white rounded-full"></span>
+                    <span class="w-5 h-0.5 bg-white rounded-full self-end"></span>
                 </button>
             </div>
         </div>
     </nav>
 
     <!-- Mobile Menu Overlay -->
-    <div class="mobile-menu" id="mobile-menu">
-        <button class="mobile-menu-close" id="btn-close-menu" aria-label="Cerrar menú">&times;</button>
-        <a href="home.html#planes" onclick="closeMobileMenu()">Planes</a>
-        <a href="cobertura.html">Cobertura</a>
-        <a href="soporte.html">Soporte</a>
-        <a href="login.html" style="color: #E30613;">Admin</a>
+    <div class="fixed inset-0 z-[60] bg-black hidden flex-col items-center justify-center gap-12" id="mobile-menu">
+        <button class="absolute top-10 right-10 text-white text-5xl font-light" id="btn-close-menu">&times;</button>
+        <a href="#planes" class="text-5xl font-black italic tracking-tighter text-white hover:text-primary transition-colors">PLANES</a>
+        <a href="cobertura.html" class="text-5xl font-black italic tracking-tighter text-white hover:text-primary transition-colors">COBERTURA</a>
+        <a href="soporte.html" class="text-5xl font-black italic tracking-tighter text-white hover:text-primary transition-colors">SOPORTE</a>
+        <a href="login.html" class="text-2xl font-black italic tracking-tighter text-primary">ADMIN AREA</a>
     </div>
 
     <main>
-        <!-- Hero Section: High Velocity -->
-        <section class="relative min-h-screen flex items-center pt-20 overflow-hidden bg-black">
-            <div class="absolute inset-0 overflow-hidden">
-                <div class="absolute -top-[10%] -left-[10%] w-[60%] h-[60%] bg-primary/20 rounded-full blur-[120px]"></div>
-                <div class="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[100px]"></div>
-                <!-- Grid Pattern -->
-                <div class="absolute inset-0 opacity-[0.03]" style="background-image: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px); background-size: 50px 50px;"></div>
-            </div>
-            <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-8 w-full grid md:grid-cols-2 gap-8 md:gap-16 items-center">
-                <div class="space-y-6 sm:space-y-8 text-center md:text-left">
-
-                    <h1 id="hero-title" class="font-headline text-4xl sm:text-6xl md:text-8xl font-extrabold text-white leading-tight tracking-tighter hero-title-mobile">
-                        CONECTANDOTE <span class="text-primary">AL MUNDO</span>
-                    </h1>
-                    <p id="hero-desc" class="text-neutral-400 text-base sm:text-lg md:text-xl font-medium leading-relaxed max-w-xl mx-auto md:mx-0 hero-desc-mobile">
-                        Experimenta la velocidad del futuro con nuestra red de internet de alta fidelidad. Sin cortes, sin esperas, solo conexión pura.
+        <!-- Hero Section -->
+        <section class="relative min-h-screen flex items-center justify-center py-32 bg-black overflow-hidden" id="hero">
+            <!-- Fiber Optic BG with Parallax -->
+            <div class="absolute inset-0 hero-bg" id="hero-bg-img"></div>
+            
+            <!-- Animated Light Glows -->
+            <div class="absolute top-1/4 left-1/4 w-[800px] h-[800px] floating-accent blur-[180px] opacity-20 animate-float"></div>
+            <div class="absolute -bottom-1/4 right-0 w-[600px] h-[600px] floating-accent blur-[140px] opacity-10"></div>
+            
+            <div class="relative z-10 max-w-[1400px] mx-auto px-8 w-full text-center">
+                <div class="inline-flex items-center gap-4 bg-white/5 border border-white/10 px-6 py-3 rounded-full backdrop-blur-2xl mb-12" id="hero-badge">
+                    <span class="flex h-2.5 w-2.5 rounded-full bg-primary animate-ping"></span>
+                    <span class="text-[11px] font-black uppercase tracking-[0.4em] text-neutral-300">Conexión de Alta Fidelidad</span>
+                </div>
+                
+                <h1 class="font-headline text-5xl sm:text-8xl md:text-[11rem] font-black text-white leading-[0.85] tracking-tighter uppercase italic select-none" id="main-headline">
+                   <!-- Letters will be injected by script for animation -->
+                </h1>
+                
+                <div id="hero-cta-area" class="opacity-0 translate-y-10">
+                    <p id="hero-desc" class="text-neutral-500 text-lg md:text-2xl font-medium leading-relaxed max-w-3xl mx-auto font-body italic mt-16">
+                        Experimenta el pulso de la fibra óptica simétrica. <br class="hidden md:block"/> Tecnología que respira velocidad en cada byte.
                     </p>
-                    <div class="flex flex-col sm:flex-row flex-wrap gap-4 pt-2 sm:pt-4 items-center md:items-start justify-center md:justify-start">
-                        <a class="bg-primary text-white px-8 py-4 rounded-lg font-bold text-base sm:text-lg hover:bg-red-700 transition-all shadow-lg shadow-red-600/20 w-full sm:w-auto text-center" href="#planes">
-                            Ver Planes
+                    
+                    <div class="flex flex-col sm:flex-row gap-8 pt-12 justify-center">
+                        <a href="#planes" class="bg-primary text-white px-14 py-6 rounded-full font-black uppercase italic tracking-[0.2em] text-xs shadow-2xl shadow-red-600/40 hover:scale-105 transition-all">
+                            Ver Planes Digitales
                         </a>
-                        <button class="bg-transparent border-2 border-white/20 text-white px-8 py-4 rounded-lg font-bold text-base sm:text-lg hover:bg-white/10 transition-all w-full sm:w-auto">
+                        <button class="bg-white/5 border border-white/10 text-white px-14 py-6 rounded-full font-black uppercase italic tracking-[0.2em] text-xs hover:bg-white hover:text-black transition-all">
                             Saber Más
                         </button>
                     </div>
                 </div>
+            </div>
 
+            <!-- Scroll Indicator -->
+            <div class="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4 opacity-50">
+                <div class="w-px h-16 bg-gradient-to-b from-primary to-transparent"></div>
             </div>
         </section>
+
+        <!-- Benefits Bento -->
+        <section class="py-32 bg-[#080808] px-8 sm:px-16" id="benefits">
+            <div class="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="md:col-span-2 bg-[#121212] p-16 rounded-[4rem] border border-white/5 group hover:border-primary/20 transition-all flex flex-col justify-between min-h-[500px]">
+                    <div class="h-20 w-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-8 pulse-glow">
+                        <span class="material-symbols-outlined text-primary text-4xl">hub</span>
+                    </div>
+                    <div class="space-y-6">
+                        <h3 class="font-headline text-5xl font-black text-white uppercase italic tracking-tighter leading-none">Red <br/> <span class="text-primary opacity-50">Ubiquiti AirFiber</span></h3>
+                        <p class="text-neutral-500 font-body text-xl leading-relaxed max-w-md">Nuestra troncal de alta fidelidad garantiza estabilidad incluso en condiciones climáticas adversas.</p>
+                    </div>
+                </div>
+                
+                <div class="bg-primary p-12 rounded-[4rem] flex flex-col justify-between group overflow-hidden relative">
+                    <div class="absolute top-0 right-0 p-8">
+                        <span class="material-symbols-outlined text-8xl text-black/10 transition-transform group-hover:scale-150 duration-1000">bolt</span>
+                    </div>
+                    <h3 class="font-headline text-3xl font-black text-white uppercase italic leading-tight">Velocidad <br/> Simétrica</h3>
+                    <p class="text-white/80 font-bold uppercase text-[10px] tracking-[0.2em]">Upload / Download Unificados</p>
+                </div>
+
+                <div class="bg-[#1a1a1a] p-12 rounded-[4rem] flex flex-col justify-end group border border-white/5">
+                    <span class="material-symbols-outlined text-primary text-5xl mb-6 group-hover:rotate-[360deg] transition-transform duration-1000">support_agent</span>
+                    <h3 class="font-headline text-2xl font-black text-white uppercase italic mb-4">Vecinos <br/> de Choya</h3>
+                    <p class="text-neutral-500 font-body text-sm italic">Soporte humano real, sin bots.</p>
+                </div>
+
+                <div class="md:col-span-4 bg-[#0d0d0d] p-2 rounded-[3.5rem] overflow-hidden border border-white/5 mt-4">
+                    <div class="bg-gradient-to-r from-primary/20 via-transparent to-transparent p-16 h-full flex flex-col md:flex-row items-center justify-between gap-12">
+                        <div class="space-y-6 text-center md:text-left">
+                            <h4 class="font-headline text-5xl font-black text-white uppercase italic leading-none">ÚNETE A LA REVOLUCIÓN <br/> <span class="text-primary italic">DIGITAL</span></h4>
+                            <p class="text-neutral-500 font-body max-w-lg">Cientos de hogares ya disfrutan de la conectividad que redefine el departamento Choya. ¿Estás listo?</p>
+                        </div>
+                        <a href="https://wa.me/3855374835" class="bg-white text-black px-12 py-5 rounded-full font-black uppercase italic tracking-widest text-xs hover:bg-primary hover:text-white transition-all">Consúltanos</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Planes Section -->
-        <section class="py-16 sm:py-32 px-4 sm:px-8 bg-white" id="planes">
-            <div class="max-w-7xl mx-auto">
-                <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 sm:gap-8 mb-12 sm:mb-20 border-l-4 sm:border-l-8 border-primary pl-4 sm:pl-8">
-                    <div class="space-y-2">
-                        <h2 class="font-headline text-3xl sm:text-5xl font-black text-black tracking-tighter uppercase italic plans-title-mobile">Planes a tu Medida</h2>
-                        <p class="text-neutral-500 max-w-xl text-base sm:text-lg font-medium">Soluciones de alta fidelidad para cada necesidad digital.</p>
+        <section class="py-40 bg-white px-8 sm:px-16" id="planes">
+            <div class="max-w-[1400px] mx-auto">
+                <div class="flex flex-col md:flex-row md:items-end justify-between gap-12 mb-24">
+                    <div class="space-y-6">
+                        <div class="h-1.5 w-32 bg-primary rounded-full"></div>
+                        <h2 class="font-headline text-6xl sm:text-[7rem] font-black text-black tracking-tighter uppercase italic leading-[0.85]">ELEGÍ TU <br/> <span class="text-primary">ENERGÍA</span></h2>
                     </div>
-                    <div class="text-sm font-bold text-neutral-400 uppercase tracking-widest">Precios Finales</div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-                    <div class="bg-white p-6 sm:p-10 rounded-2xl border border-neutral-100 hover:border-primary/20 transition-all duration-500 group">
-                        <div class="mb-6 sm:mb-10">
-                            <span class="material-symbols-outlined text-neutral-400 group-hover:text-primary text-4xl sm:text-5xl mb-4 sm:mb-6 transition-colors" data-icon="home">home</span>
-                            <h3 class="font-headline text-xl sm:text-2xl font-black text-black mb-2 sm:mb-3 italic uppercase">Plan Hogar</h3>
-                            <p class="text-neutral-500 font-medium leading-relaxed text-sm sm:text-base">Streaming y navegación fluida para toda la familia.</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+                    <!-- Plan Hogar LUXURY WHITE -->
+                    <div class="plan-card plan-card-white p-14 rounded-[4.5rem] shadow-2xl shadow-black/5 flex flex-col justify-between min-h-[700px] group">
+                        <div>
+                            <div class="flex justify-between items-start mb-16">
+                                <div class="bg-neutral-100 p-8 rounded-[2.5rem]">
+                                    <span class="material-symbols-outlined text-neutral-400 group-hover:text-primary text-6xl transition-colors">home</span>
+                                </div>
+                                <span class="text-[11px] font-black text-neutral-400 uppercase tracking-[0.4em] pt-4">Essential Pack</span>
+                            </div>
+                            <h3 class="font-headline text-5xl font-black text-black uppercase italic mb-6">Plan Hogar</h3>
+                            <p class="text-neutral-500 font-body text-xl max-w-sm mb-16 italic">Streaming familiar y trabajo remoto sin latencia.</p>
+                            
+                            <div class="flex items-baseline gap-3 mb-12">
+                                <span class="text-3xl font-black text-neutral-200 tracking-tighter">$</span>
+                                <span id="price-hogar" class="text-9xl font-black text-black tracking-tighter leading-none">30.000</span>
+                                <span class="text-neutral-400 font-black uppercase text-[11px] tracking-widest">/Final</span>
+                            </div>
                         </div>
-                        <div class="flex items-baseline gap-1 mb-2">
-                            <span class="text-xl sm:text-2xl font-black text-black opacity-20">$</span>
-                            <span id="price-hogar" class="text-3xl sm:text-5xl font-black text-black plan-price-mobile">30.000</span>
-                        </div>
-                        <ul class="space-y-5 mb-6 sm:mb-10">
-                            <!-- Megas removidos a pedido del usuario -->
-                        </ul>
-                        <a class="block text-center border-2 border-black text-black font-black uppercase italic py-3 sm:py-4 rounded-lg hover:bg-black hover:text-white transition-all tracking-tighter text-sm sm:text-base" href="https://wa.me/3855374835">Consultar</a>
-                    </div>
-                    <!-- Plan Gaming -->
-                    <div class="bg-black p-6 sm:p-10 rounded-2xl relative shadow-2xl shadow-primary/10 overflow-hidden transform md:-translate-y-4">
-                        <div class="absolute top-0 right-0 bg-primary text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-bl-lg font-black text-[9px] sm:text-[10px] uppercase tracking-[0.2em] italic">Recomendado</div>
-                        <div class="mb-6 sm:mb-10 text-white">
-                            <span class="material-symbols-outlined text-primary text-4xl sm:text-5xl mb-4 sm:mb-6" data-icon="sports_esports">sports_esports</span>
-                            <h3 class="font-headline text-xl sm:text-2xl font-black mb-2 sm:mb-3 italic uppercase">Plan Gaming</h3>
-                            <p class="text-neutral-400 font-medium leading-relaxed text-sm sm:text-base">Baja latencia optimizada para gamers profesionales.</p>
-                        </div>
-                        <div class="flex items-baseline gap-1 mb-2">
-                            <span class="text-xl sm:text-2xl font-black text-white/30">$</span>
-                            <span id="price-gaming" class="text-3xl sm:text-5xl font-black text-white plan-price-mobile">45.000</span>
-                        </div>
-                        <ul class="space-y-5 mb-6 sm:mb-10 text-white">
-                            <!-- Megas removidos a pedido del usuario -->
-                        </ul>
-                        <a class="block text-center bg-primary text-white font-black uppercase italic py-3 sm:py-4 rounded-lg hover:bg-red-700 transition-all tracking-tighter text-sm sm:text-base" href="https://wa.me/3855374835">Consultar</a>
+                        <a href="https://wa.me/3855374835" class="block w-full border-[3px] border-black py-6 rounded-3xl text-center font-black uppercase italic tracking-[0.3em] text-xs hover:bg-black hover:text-white transition-all">Contratar</a>
                     </div>
 
+                    <!-- Plan Gaming EL PULSO -->
+                    <div class="plan-card p-14 rounded-[4.5rem] bg-[#0d0d0d] flex flex-col justify-between min-h-[700px] relative group overflow-hidden">
+                        <div class="absolute top-0 right-0 bg-primary text-white px-10 py-5 rounded-bl-[3rem] font-black text-xs uppercase tracking-[0.2em] italic z-20">HIGH FIDELITY</div>
+                        
+                        <div class="absolute -top-20 -right-20 w-96 h-96 bg-primary/20 blur-[120px] rounded-full group-hover:animate-pulse"></div>
+
+                        <div>
+                            <div class="flex justify-between items-start mb-16">
+                                <div class="bg-white/5 p-8 rounded-[2.5rem] border border-white/10 group-hover:border-primary/50 transition-colors">
+                                    <span class="material-symbols-outlined text-primary text-6xl shadow-primary/20">sports_esports</span>
+                                </div>
+                            </div>
+                            <h3 class="font-headline text-5xl font-black text-white uppercase italic mb-6">Plan Gaming</h3>
+                            <p class="text-neutral-400 font-body text-xl max-w-sm mb-16 italic">Optimización extrema para servidores competitivos.</p>
+                            
+                            <div class="flex items-baseline gap-3 mb-12">
+                                <span class="text-3xl font-black text-white/10 tracking-tighter">$</span>
+                                <span id="price-gaming" class="text-9xl font-black text-white tracking-tighter leading-none">45.000</span>
+                                <span class="text-neutral-500 font-black uppercase text-[11px] tracking-widest">/Final</span>
+                            </div>
+                        </div>
+                        <a href="https://wa.me/3855374835" class="block w-full bg-primary py-7 rounded-3xl text-center font-black uppercase italic tracking-[0.3em] text-xs hover:bg-red-700 transition-all shadow-2xl shadow-red-600/30">Adquirir Ahora</a>
+                    </div>
                 </div>
             </div>
         </section>
-        <!-- Footer Component -->
-        <footer class="bg-neutral-950 w-full py-12 sm:py-20 border-t border-white/5" id="soporte">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-12 px-4 sm:px-8 max-w-7xl mx-auto footer-grid-mobile">
-                <div class="space-y-4 sm:space-y-6">
-                    <div class="font-bold text-white text-2xl sm:text-3xl italic font-black tracking-tighter">
-                        <span style="color:#E30613">Inter</span> Red
+
+        <!-- Footer -->
+        <footer class="bg-[#050505] py-32 px-8 sm:px-16 border-t border-white/5">
+            <div class="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-start gap-24">
+                <div class="space-y-12">
+                    <div class="flex items-center gap-2">
+                        <span class="text-4xl font-black italic tracking-tighter text-primary">Inter</span>
+                        <span class="text-4xl font-black italic tracking-tighter text-white">Red</span>
                     </div>
-                    <p class="text-neutral-400 font-medium leading-relaxed max-w-xs mx-auto md:mx-0">© 2024 Inter Red. Conectando al mundo.</p>
-                </div>
-                <div class="space-y-4 sm:space-y-6">
-                    <h4 class="text-white font-bold uppercase text-xs tracking-widest text-primary">Redes Sociales</h4>
-                    <div class="flex gap-6 justify-center md:justify-start">
-                        <a class="text-neutral-400 hover:text-primary transition-colors" href="https://www.facebook.com/interred.net/" target="_blank">
-                            <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/></svg>
+                    <p class="text-neutral-500 font-body max-w-sm text-lg leading-relaxed italic">
+                        Conectando el corazón de Santiago del Estero con la velocidad que demanda el mundo moderno.
+                    </p>
+                    <div class="flex gap-8">
+                        <a href="https://www.facebook.com/interred.net/" class="text-neutral-600 hover:text-primary transition-colors">
+                            <svg class="w-8 h-8 fill-current" viewBox="0 0 24 24"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/></svg>
                         </a>
-                        <a class="text-neutral-400 hover:text-primary transition-colors" href="https://www.instagram.com/interred.ar?igsh=ejVnMTVwcWVwdGsz" target="_blank">
-                            <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                        <a href="https://www.instagram.com/interred.ar" class="text-neutral-600 hover:text-primary transition-colors">
+                           <svg class="w-8 h-8 fill-current" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
                         </a>
                     </div>
                 </div>
+                
+                <div class="grid grid-cols-2 gap-x-24 gap-y-8">
+                    <div class="space-y-6">
+                        <h4 class="font-headline font-black text-white uppercase text-[10px] tracking-[0.4em]">Explorar</h4>
+                        <ul class="space-y-4 text-neutral-600 font-bold uppercase text-[10px] tracking-widest">
+                            <li><a href="cobertura.html" class="hover:text-primary transition-colors">Zonas</a></li>
+                            <li><a href="soporte.html" class="hover:text-primary transition-colors">Ayuda</a></li>
+                            <li><a href="login.html" class="hover:text-primary transition-colors">Admin</a></li>
+                        </ul>
+                    </div>
+                    <div class="space-y-6 text-right">
+                        <h4 class="font-headline font-black text-white uppercase text-[10px] tracking-[0.4em]">Ubicación</h4>
+                        <p class="text-neutral-700 font-bold uppercase text-[9px] tracking-[0.3em] leading-relaxed">
+                            Departamento Choya <br/> Santiago del Estero <br/> Argentina
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="max-w-[1400px] mx-auto mt-32 pt-16 border-t border-white/5 flex justify-between items-center">
+                <p class="text-[9px] font-black text-neutral-800 uppercase tracking-[0.5em]">Global Connectivity Protocol</p>
+                <p class="text-[9px] font-black text-neutral-800 uppercase tracking-[0.5em]">Ver. 2.0.24</p>
             </div>
         </footer>
     </main>
 
     <script>
-        // ===== MOBILE MENU =====
+        // Initialize GSAP
+        gsap.registerPlugin(ScrollTrigger);
+
+        // Letter Stagger Animation
+        function animateHeadline() {
+            const headline = document.getElementById('main-headline');
+            const text = "CONECTÁNDOTE AL MUNDO";
+            headline.innerHTML = text.split('').map(char => 
+                char === ' ' ? '<span class="px-4"></span>' : `<span class="stagger-letter">${char}</span>`
+            ).join('');
+
+            gsap.to('.stagger-letter', {
+                opacity: 1,
+                y: 0,
+                rotateX: 0,
+                filter: 'blur(0px)',
+                duration: 1.2,
+                stagger: 0.05,
+                ease: 'expo.out',
+                onComplete: () => {
+                    gsap.to('#hero-cta-area', {
+                        opacity: 1,
+                        y: 0,
+                        duration: 1,
+                        ease: 'power3.out'
+                    });
+                }
+            });
+        }
+
+        // Parallax Effect
+        window.addEventListener('mousemove', (e) => {
+            const { clientX, clientY } = e;
+            const x = (clientX / window.innerWidth - 0.5) * 30;
+            const y = (clientY / window.innerHeight - 0.5) * 30;
+            
+            gsap.to('#hero-bg-img', {
+                x: x,
+                y: y,
+                duration: 2,
+                ease: 'power2.out'
+            });
+        });
+
+        // Mobile Menu
         const btnOpen = document.getElementById('btn-mobile-menu');
         const btnClose = document.getElementById('btn-close-menu');
         const mobileMenu = document.getElementById('mobile-menu');
 
         btnOpen.addEventListener('click', () => {
-            mobileMenu.classList.add('open');
-            document.body.style.overflow = 'hidden';
+            mobileMenu.style.display = 'flex';
+            gsap.from('#mobile-menu a', {
+                opacity: 0,
+                y: 50,
+                stagger: 0.1,
+                duration: 0.6,
+                ease: 'back.out'
+            });
         });
-        btnClose.addEventListener('click', closeMobileMenu);
-
-        function closeMobileMenu() {
-            mobileMenu.classList.remove('open');
-            document.body.style.overflow = '';
-        }
-
-        // Close on link click
-        mobileMenu.querySelectorAll('a').forEach(link => {
-            link.addEventListener('click', closeMobileMenu);
+        
+        btnClose.addEventListener('click', () => {
+            mobileMenu.style.display = 'none';
         });
 
-        // ===== CMS Integration =====
+        // Scroll Reveal
+        gsap.utils.toArray('section:not(#hero)').forEach(section => {
+            gsap.from(section, {
+                scrollTrigger: {
+                    trigger: section,
+                    start: 'top 80%',
+                },
+                opacity: 0,
+                y: 50,
+                duration: 1.2,
+                ease: 'expo.out'
+            });
+        });
+
+        // CMS Integration
         async function loadCmsContent() {
             try {
                 const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:3000' : '';
                 const res = await fetch(`${baseUrl}/api/cms/config`);
                 const data = await res.json();
                 
-                if (data.hero && data.hero.title) {
-                    document.getElementById('hero-title').innerHTML = data.hero.title;
-                    document.getElementById('hero-desc').innerText = data.hero.description;
+                if (data.plans) {
                     document.getElementById('price-hogar').innerText = data.plans.hogar.price;
                     document.getElementById('price-gaming').innerText = data.plans.gaming.price;
-                    
-                    // Update WhatsApp links
-                    const wspLinks = document.querySelectorAll('a[href^="https://wa.me/"]');
-                    wspLinks.forEach(link => {
-                        link.href = `https://wa.me/${data.contact.whatsapp}`;
-                    });
-
-                    // Update Social links (Facebook)
-                    const fbLinks = document.querySelectorAll('a[href^="https://www.facebook.com/"]');
-                    fbLinks.forEach(link => {
-                        link.href = `https://www.facebook.com/${data.contact.facebook}`;
-                    });
-
-                    // Update Social links (Instagram)
-                    const igLinks = document.querySelectorAll('a[href^="https://www.instagram.com/"]');
-                    igLinks.forEach(link => {
-                        link.href = `https://www.instagram.com/${data.contact.instagram}`;
-                    });
                 }
             } catch (err) {
-                console.warn('CMS: Usando contenido estático por defecto.');
+                console.warn('CMS: Usando contenido estático.');
             }
         }
-        document.addEventListener('DOMContentLoaded', loadCmsContent);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            animateHeadline();
+            loadCmsContent();
+        });
     </script>
 </body>
 </html>
-</CodeContent>
-<parameter name="Description">Complete rewrite of index.html to make the landing page fully responsive for mobile devices. Added hamburger menu, responsive typography, responsive spacing, and ensured the logo reads 'Inter Red' (Inter in red, Red in black) consistently everywhere.
