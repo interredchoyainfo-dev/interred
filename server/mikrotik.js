@@ -242,3 +242,43 @@ export async function listSimpleQueues(config) {
         return { success: true, data };
     });
 }
+
+export async function updateClientQueue(config, clientIp, clientName, action) {
+    if (!clientIp) throw new Error('IP de cliente requerida');
+    
+    return withMikrotik(config, async (api) => {
+        const queueMenu = api.menu('/queue/simple');
+        const ahora = new Date().toLocaleString('es-AR');
+        
+        // 1. Buscamos la cola (Prioridad IP, luego Nombre)
+        const targetIp = clientIp.includes('/') ? clientIp : `${clientIp}/32`;
+        let queues = await queueMenu.where('target', targetIp).get();
+
+        if (!queues || queues.length === 0) {
+            queues = await queueMenu.where('name', clientName).get();
+        }
+
+        if (queues && queues.length > 0) {
+            const queueId = queues[0]['.id'];
+            const esCorte = action === 'suspend';
+            
+            // 2. Definimos el formato del comentario que pediste
+            // Ej: InterRed | LIMITADO | CECILIA | 30/3/2026, 2:00:16
+            const estado = esCorte ? 'LIMITADO' : 'ACTIVO';
+            const clientNameUpper = clientName ? clientName.toUpperCase() : 'DESCONOCIDO';
+            const nuevoComentario = `InterRed | ${estado} | ${clientNameUpper} | ${ahora}`;
+
+            // 3. Aplicamos el cambio en la Simple Queue
+            await queueMenu.set({
+                '.id': queueId,
+                disabled: esCorte ? 'yes' : 'no',
+                comment: nuevoComentario
+            });
+
+            console.log(`✅ ${clientNameUpper} marcado como ${estado}`);
+            return { success: true, action: action, message: `Cliente ${estado} con éxito` };
+        } else {
+            throw new Error("No se encontró la cola del cliente en el MikroTik");
+        }
+    });
+}

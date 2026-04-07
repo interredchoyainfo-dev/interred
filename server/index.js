@@ -129,7 +129,21 @@ app.post('/activate', async (req, res) => {
 });
 
 // ---- NAME-BASED QUEUE CONTROL (New) ----
-import { suspendQueueByName, activateQueueByName } from './mikrotik.js';
+import { suspendQueueByName, activateQueueByName, updateClientQueue } from './mikrotik.js';
+
+app.post('/api/mikrotik/update-queue', async (req, res) => {
+    const { config, clientIp, clientName, action } = req.body;
+    if (!config || !clientIp || !action) {
+        return res.status(400).json({ success: false, message: 'Faltan datos requeridos (config, clientIp, action)' });
+    }
+    try {
+        const result = await updateClientQueue(config, clientIp, clientName, action);
+        res.json(result);
+    } catch (error) {
+        console.error('Error update-queue:', error.message);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 
 app.post('/api/queue/enable', async (req, res) => {
     const { config, name, clientName } = req.body;
@@ -299,7 +313,7 @@ const distPath = path.join(__dirname, '..', 'dist');
 app.use(express.static(distPath));
 
 // SPA fallback: any non-API route serves index.html
-app.get('*', (req, res) => {
+app.use((req, res) => {
     // Don't catch API routes
     if (req.path.startsWith('/api/')) {
         return res.status(404).json({ error: 'Endpoint not found' });
