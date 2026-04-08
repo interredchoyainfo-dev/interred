@@ -8,9 +8,7 @@
     <title>Mapa de Cobertura | Inter Red</title>
     
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com" rel="preconnect"/>
-    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     
     <!-- Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -27,15 +25,15 @@
         theme: {
           extend: {
             colors: {
-              primary: "#E30613",
-              "primary-glow": "rgba(227, 6, 19, 0.4)",
-              background: "#080808",
+              primary: "#ff0000",
+              "primary-glow": "rgba(255, 0, 0, 0.4)",
+              background: "#0a0a0a",
               surface: "#121212",
               "surface-highest": "#1a1a1a",
             },
             fontFamily: {
-              headline: ["Plus Jakarta Sans", "sans-serif"],
-              body: ["Manrope", "sans-serif"],
+              headline: ["Rajdhani", "sans-serif"],
+              body: ["Montserrat", "sans-serif"],
             },
           },
         },
@@ -44,13 +42,14 @@
     
     <style>
         :root {
-            --accent: #E30613;
+            --accent: #ff0000;
         }
 
         body {
-            background-color: #080808;
-            color: #E5E2E1;
+            background-color: #0a0a0a;
+            color: #ffffff;
             overflow-x: hidden;
+            font-family: 'Montserrat', sans-serif;
         }
 
         .glass-nav {
@@ -109,8 +108,8 @@
 
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #080808; }
-        ::-webkit-scrollbar-thumb { background: #E30613; border-radius: 10px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #ff0000; border-radius: 10px; }
 
         @keyframes float {
             0%, 100% { transform: translateY(0); }

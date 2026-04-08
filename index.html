@@ -8,9 +8,7 @@
     <title>Inter Red | El Pulso Digital del Choya</title>
     
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com" rel="preconnect"/>
-    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     
     <!-- Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -27,15 +25,15 @@
         theme: {
           extend: {
             colors: {
-              primary: "#E30613",
-              "primary-glow": "rgba(227, 6, 19, 0.4)",
-              background: "#080808",
+              primary: "#ff0000",
+              "primary-glow": "rgba(255, 0, 0, 0.4)",
+              background: "#0a0a0a",
               surface: "#121212",
               "surface-highest": "#1a1a1a",
             },
             fontFamily: {
-              headline: ["Plus Jakarta Sans", "sans-serif"],
-              body: ["Manrope", "sans-serif"],
+              headline: ["Rajdhani", "sans-serif"],
+              body: ["Montserrat", "sans-serif"],
             },
           },
         },
@@ -44,13 +42,14 @@
     
     <style>
         :root {
-            --accent: #E30613;
+            --accent: #ff0000;
         }
 
         body {
-            background-color: #080808;
-            color: #E5E2E1;
+            background-color: #0a0a0a;
+            color: #ffffff;
             overflow-x: hidden;
+            font-family: 'Montserrat', sans-serif;
         }
 
         /* The Digital Pulse Glow FX */
@@ -152,12 +151,49 @@
         ::-webkit-scrollbar-track { background: #080808; }
         ::-webkit-scrollbar-thumb { background: #E30613; border-radius: 10px; }
 
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
+        .animate-float { animation: float 6s ease-in-out infinite; }
+
+        /* Floating WhatsApp Button */
+        .wsp-float {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background-color: #25d366;
+            color: #FFF;
+            border-radius: 50px;
+            text-align: center;
+            font-size: 30px;
+            box-shadow: 0 10px 25px rgba(37, 211, 102, 0.5);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px 25px;
+            gap: 10px;
+            transition: all 0.3s ease;
+            text-decoration: none;
         }
 
-        .animate-float { animation: float 6s ease-in-out infinite; }
+        .wsp-float:hover {
+            transform: scale(1.1);
+            background-color: #128c7e;
+        }
+
+        @media (max-width: 640px) {
+            .wsp-float {
+                bottom: 20px;
+                right: 50%;
+                transform: translateX(50%);
+                width: 90%;
+                font-size: 16px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+            .wsp-float:hover {
+                transform: translateX(50%) scale(1.02);
+            }
+        }
     </style>
 </head>
 <body class="selection:bg-primary/40">
@@ -191,12 +227,14 @@
     </nav>
 
     <!-- Mobile Menu Overlay -->
-    <div class="fixed inset-0 z-[60] bg-black hidden flex-col items-center justify-center gap-12" id="mobile-menu">
+    <div class="fixed inset-0 z-[60] bg-black/95 backdrop-blur-xl hidden flex-col items-center justify-center gap-12" id="mobile-menu">
         <button class="absolute top-10 right-10 text-white text-5xl font-light" id="btn-close-menu">&times;</button>
-        <a href="#planes" class="text-5xl font-black italic tracking-tighter text-white hover:text-primary transition-colors">PLANES</a>
-        <a href="cobertura.html" class="text-5xl font-black italic tracking-tighter text-white hover:text-primary transition-colors">COBERTURA</a>
-        <a href="soporte.html" class="text-5xl font-black italic tracking-tighter text-white hover:text-primary transition-colors">SOPORTE</a>
-        <a href="login.html" class="text-2xl font-black italic tracking-tighter text-primary">ADMIN AREA</a>
+        <div class="flex flex-col items-center gap-8">
+            <a href="#planes" class="text-4xl font-black italic tracking-tighter text-white hover:text-primary transition-colors">PLANES</a>
+            <a href="cobertura.html" class="text-4xl font-black italic tracking-tighter text-white hover:text-primary transition-colors">COBERTURA</a>
+            <a href="soporte.html" class="text-4xl font-black italic tracking-tighter text-white hover:text-primary transition-colors">SOPORTE</a>
+            <a href="login.html" class="text-xl font-black italic tracking-tighter text-primary mt-8">ADMIN AREA</a>
+        </div>
     </div>
 
     <main>
@@ -244,37 +282,37 @@
         <!-- Benefits Bento -->
         <section class="py-32 bg-[#080808] px-8 sm:px-16" id="benefits">
             <div class="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div class="md:col-span-2 bg-[#121212] p-16 rounded-[4rem] border border-white/5 group hover:border-primary/20 transition-all flex flex-col justify-between min-h-[500px]">
-                    <div class="h-20 w-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-8 pulse-glow">
-                        <span class="material-symbols-outlined text-primary text-4xl">hub</span>
+                <div class="md:col-span-2 bg-[#121212] p-8 sm:p-16 rounded-[2.5rem] sm:rounded-[4rem] border border-white/5 group hover:border-primary/20 transition-all flex flex-col justify-between min-h-[400px] sm:min-h-[500px]">
+                    <div class="h-16 w-16 sm:h-20 sm:w-20 bg-primary/10 rounded-2xl sm:rounded-3xl flex items-center justify-center mb-8 pulse-glow">
+                        <span class="material-symbols-outlined text-primary text-3xl sm:text-4xl">hub</span>
                     </div>
                     <div class="space-y-6">
-                        <h3 class="font-headline text-5xl font-black text-white uppercase italic tracking-tighter leading-none">Red <br/> <span class="text-primary opacity-50">Ubiquiti AirFiber</span></h3>
-                        <p class="text-neutral-500 font-body text-xl leading-relaxed max-w-md">Nuestra troncal de alta fidelidad garantiza estabilidad incluso en condiciones climáticas adversas.</p>
+                        <h3 class="font-headline text-4xl sm:text-5xl font-black text-white uppercase italic tracking-tighter leading-none">Red <br/> <span class="text-primary opacity-50">Ubiquiti AirFiber</span></h3>
+                        <p class="text-neutral-500 font-body text-lg sm:text-xl leading-relaxed max-w-md">Nuestra troncal de alta fidelidad garantiza estabilidad incluso en condiciones climáticas adversas.</p>
                     </div>
                 </div>
                 
-                <div class="bg-primary p-12 rounded-[4rem] flex flex-col justify-between group overflow-hidden relative">
+                <div class="bg-primary p-8 sm:p-12 rounded-[2.5rem] sm:rounded-[4rem] flex flex-col justify-between group overflow-hidden relative min-h-[250px] sm:min-h-0">
                     <div class="absolute top-0 right-0 p-8">
-                        <span class="material-symbols-outlined text-8xl text-black/10 transition-transform group-hover:scale-150 duration-1000">bolt</span>
+                        <span class="material-symbols-outlined text-6xl sm:text-8xl text-black/10 transition-transform group-hover:scale-150 duration-1000">bolt</span>
                     </div>
-                    <h3 class="font-headline text-3xl font-black text-white uppercase italic leading-tight">Velocidad <br/> Simétrica</h3>
-                    <p class="text-white/80 font-bold uppercase text-[10px] tracking-[0.2em]">Upload / Download Unificados</p>
+                    <h3 class="font-headline text-2xl sm:text-3xl font-black text-white uppercase italic leading-tight">Velocidad <br/> Simétrica</h3>
+                    <p class="text-white/80 font-bold uppercase text-[9px] sm:text-[10px] tracking-[0.2em]">Upload / Download Unificados</p>
                 </div>
 
-                <div class="bg-[#1a1a1a] p-12 rounded-[4rem] flex flex-col justify-end group border border-white/5">
-                    <span class="material-symbols-outlined text-primary text-5xl mb-6 group-hover:rotate-[360deg] transition-transform duration-1000">support_agent</span>
-                    <h3 class="font-headline text-2xl font-black text-white uppercase italic mb-4">Vecinos <br/> de Choya</h3>
-                    <p class="text-neutral-500 font-body text-sm italic">Soporte humano real, sin bots.</p>
+                <div class="bg-[#1a1a1a] p-8 sm:p-12 rounded-[2.5rem] sm:rounded-[4rem] flex flex-col justify-end group border border-white/5 min-h-[250px] sm:min-h-0">
+                    <span class="material-symbols-outlined text-primary text-4xl sm:text-5xl mb-6 group-hover:rotate-[360deg] transition-transform duration-1000">support_agent</span>
+                    <h3 class="font-headline text-xl sm:text-2xl font-black text-white uppercase italic mb-4">Vecinos <br/> de Choya</h3>
+                    <p class="text-neutral-500 font-body text-xs sm:text-sm italic">Soporte humano real, sin bots.</p>
                 </div>
 
-                <div class="md:col-span-4 bg-[#0d0d0d] p-2 rounded-[3.5rem] overflow-hidden border border-white/5 mt-4">
-                    <div class="bg-gradient-to-r from-primary/20 via-transparent to-transparent p-16 h-full flex flex-col md:flex-row items-center justify-between gap-12">
+                <div class="md:col-span-4 bg-[#0d0d0d] p-1 sm:p-2 rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden border border-white/5 mt-4">
+                    <div class="bg-gradient-to-r from-primary/20 via-transparent to-transparent p-8 sm:p-16 h-full flex flex-col md:flex-row items-center justify-between gap-12">
                         <div class="space-y-6 text-center md:text-left">
-                            <h4 class="font-headline text-5xl font-black text-white uppercase italic leading-none">ÚNETE A LA REVOLUCIÓN <br/> <span class="text-primary italic">DIGITAL</span></h4>
-                            <p class="text-neutral-500 font-body max-w-lg">Cientos de hogares ya disfrutan de la conectividad que redefine el departamento Choya. ¿Estás listo?</p>
+                            <h4 class="font-headline text-3xl sm:text-5xl font-black text-white uppercase italic leading-none">ÚNETE A LA REVOLUCIÓN <br/> <span class="text-primary italic">DIGITAL</span></h4>
+                            <p class="text-neutral-500 font-body text-base sm:text-lg max-w-lg">Cientos de hogares ya disfrutan de la conectividad que redefine el departamento Choya. ¿Estás listo?</p>
                         </div>
-                        <a href="https://wa.me/3855374835" class="bg-white text-black px-12 py-5 rounded-full font-black uppercase italic tracking-widest text-xs hover:bg-primary hover:text-white transition-all">Consúltanos</a>
+                        <a href="https://wa.me/3855374835" class="bg-white text-black px-10 sm:px-12 py-4 sm:py-5 rounded-full font-black uppercase italic tracking-widest text-[10px] sm:text-xs hover:bg-primary hover:text-white transition-all w-full sm:w-auto text-center">Consúltanos</a>
                     </div>
                 </div>
             </div>
@@ -286,54 +324,54 @@
                 <div class="flex flex-col md:flex-row md:items-end justify-between gap-12 mb-24">
                     <div class="space-y-6">
                         <div class="h-1.5 w-32 bg-primary rounded-full"></div>
-                        <h2 class="font-headline text-6xl sm:text-[7rem] font-black text-black tracking-tighter uppercase italic leading-[0.85]">ELEGÍ TU <br/> <span class="text-primary">ENERGÍA</span></h2>
+                        <h2 id="planes-title" class="font-headline text-5xl sm:text-[7rem] font-black text-black tracking-tighter uppercase italic leading-[0.85]">ELEGÍ TU <br/> <span class="text-primary">VELOCIDAD</span></h2>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-12 px-4 sm:px-0">
                     <!-- Plan Hogar LUXURY WHITE -->
-                    <div class="plan-card plan-card-white p-14 rounded-[4.5rem] shadow-2xl shadow-black/5 flex flex-col justify-between min-h-[700px] group">
+                    <div class="plan-card plan-card-white p-8 sm:p-14 rounded-[3rem] sm:rounded-[4.5rem] shadow-2xl shadow-black/5 flex flex-col justify-between min-h-[600px] sm:min-h-[700px] group w-[95%] mx-auto sm:w-full">
                         <div>
-                            <div class="flex justify-between items-start mb-16">
-                                <div class="bg-neutral-100 p-8 rounded-[2.5rem]">
-                                    <span class="material-symbols-outlined text-neutral-400 group-hover:text-primary text-6xl transition-colors">home</span>
+                            <div class="flex justify-between items-start mb-10 sm:mb-16">
+                                <div class="bg-neutral-100 p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem]">
+                                    <span class="material-symbols-outlined text-neutral-400 group-hover:text-primary text-4xl sm:text-6xl transition-colors">home</span>
                                 </div>
-                                <span class="text-[11px] font-black text-neutral-400 uppercase tracking-[0.4em] pt-4">Essential Pack</span>
+                                <span class="text-[9px] sm:text-[11px] font-black text-neutral-400 uppercase tracking-[0.4em] pt-4">Essential Pack</span>
                             </div>
-                            <h3 class="font-headline text-5xl font-black text-black uppercase italic mb-6">Plan Hogar</h3>
-                            <p class="text-neutral-500 font-body text-xl max-w-sm mb-16 italic">Streaming familiar y trabajo remoto sin latencia.</p>
+                            <h3 class="font-headline text-4xl sm:text-5xl font-black text-black uppercase italic mb-4 sm:mb-6">Plan Hogar</h3>
+                            <p class="text-neutral-500 font-body text-lg sm:text-xl max-w-sm mb-10 sm:mb-16 italic">Streaming familiar y trabajo remoto sin latencia.</p>
                             
-                            <div class="flex items-baseline gap-3 mb-12">
-                                <span class="text-3xl font-black text-neutral-200 tracking-tighter">$</span>
-                                <span id="price-hogar" class="text-9xl font-black text-black tracking-tighter leading-none">30.000</span>
-                                <span class="text-neutral-400 font-black uppercase text-[11px] tracking-widest">/Final</span>
+                            <div class="flex items-baseline gap-2 sm:gap-3 mb-8 sm:mb-12">
+                                <span class="text-2xl sm:text-3xl font-black text-neutral-200 tracking-tighter">$</span>
+                                <span id="price-hogar" class="text-7xl sm:text-9xl font-black text-black tracking-tighter leading-none">30.000</span>
+                                <span class="text-neutral-400 font-black uppercase text-[9px] sm:text-[11px] tracking-widest">/Final</span>
                             </div>
                         </div>
-                        <a href="https://wa.me/3855374835" class="block w-full border-[3px] border-black py-6 rounded-3xl text-center font-black uppercase italic tracking-[0.3em] text-xs hover:bg-black hover:text-white transition-all">Contratar</a>
+                        <a href="https://wa.me/3855374835" class="block w-full border-[3px] border-black py-5 sm:py-6 rounded-2xl sm:rounded-3xl text-center font-black uppercase italic tracking-[0.3em] text-[10px] sm:text-xs hover:bg-black hover:text-white transition-all">Contratar</a>
                     </div>
 
                     <!-- Plan Gaming EL PULSO -->
-                    <div class="plan-card p-14 rounded-[4.5rem] bg-[#0d0d0d] flex flex-col justify-between min-h-[700px] relative group overflow-hidden">
-                        <div class="absolute top-0 right-0 bg-primary text-white px-10 py-5 rounded-bl-[3rem] font-black text-xs uppercase tracking-[0.2em] italic z-20">HIGH FIDELITY</div>
+                    <div class="plan-card p-8 sm:p-14 rounded-[3rem] sm:rounded-[4.5rem] bg-[#0d0d0d] flex flex-col justify-between min-h-[600px] sm:min-h-[700px] relative group overflow-hidden w-[95%] mx-auto sm:w-full">
+                        <div class="absolute top-0 right-0 bg-primary text-white px-6 sm:px-10 py-3 sm:py-5 rounded-bl-[2rem] sm:rounded-bl-[3rem] font-black text-[9px] sm:text-xs uppercase tracking-[0.2em] italic z-20">HIGH FIDELITY</div>
                         
-                        <div class="absolute -top-20 -right-20 w-96 h-96 bg-primary/20 blur-[120px] rounded-full group-hover:animate-pulse"></div>
+                        <div class="absolute -top-20 -right-20 w-64 sm:w-96 h-64 sm:h-96 bg-primary/20 blur-[80px] sm:blur-[120px] rounded-full group-hover:animate-pulse"></div>
 
                         <div>
-                            <div class="flex justify-between items-start mb-16">
-                                <div class="bg-white/5 p-8 rounded-[2.5rem] border border-white/10 group-hover:border-primary/50 transition-colors">
-                                    <span class="material-symbols-outlined text-primary text-6xl shadow-primary/20">sports_esports</span>
+                            <div class="flex justify-between items-start mb-10 sm:mb-16">
+                                <div class="bg-white/5 p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-white/10 group-hover:border-primary/50 transition-colors">
+                                    <span class="material-symbols-outlined text-primary text-4xl sm:text-6xl shadow-primary/20">sports_esports</span>
                                 </div>
                             </div>
-                            <h3 class="font-headline text-5xl font-black text-white uppercase italic mb-6">Plan Gaming</h3>
-                            <p class="text-neutral-400 font-body text-xl max-w-sm mb-16 italic">Optimización extrema para servidores competitivos.</p>
+                            <h3 class="font-headline text-4xl sm:text-5xl font-black text-white uppercase italic mb-4 sm:mb-6">Plan Gaming</h3>
+                            <p class="text-neutral-400 font-body text-lg sm:text-xl max-w-sm mb-10 sm:mb-16 italic">Optimización extrema para servidores competitivos.</p>
                             
-                            <div class="flex items-baseline gap-3 mb-12">
-                                <span class="text-3xl font-black text-white/10 tracking-tighter">$</span>
-                                <span id="price-gaming" class="text-9xl font-black text-white tracking-tighter leading-none">45.000</span>
-                                <span class="text-neutral-500 font-black uppercase text-[11px] tracking-widest">/Final</span>
+                            <div class="flex items-baseline gap-2 sm:gap-3 mb-8 sm:mb-12">
+                                <span class="text-2xl sm:text-3xl font-black text-white/10 tracking-tighter">$</span>
+                                <span id="price-gaming" class="text-7xl sm:text-9xl font-black text-white tracking-tighter leading-none">45.000</span>
+                                <span class="text-neutral-500 font-black uppercase text-[9px] sm:text-[11px] tracking-widest">/Final</span>
                             </div>
                         </div>
-                        <a href="https://wa.me/3855374835" class="block w-full bg-primary py-7 rounded-3xl text-center font-black uppercase italic tracking-[0.3em] text-xs hover:bg-red-700 transition-all shadow-2xl shadow-red-600/30">Adquirir Ahora</a>
+                        <a href="https://wa.me/3855374835" class="block w-full bg-primary py-5 sm:py-7 rounded-2xl sm:rounded-3xl text-center font-black uppercase italic tracking-[0.3em] text-[10px] sm:text-xs hover:bg-red-700 transition-all shadow-2xl shadow-red-600/30">Adquirir Ahora</a>
                     </div>
                 </div>
             </div>
@@ -385,6 +423,13 @@
         </footer>
     </main>
 
+    <!-- Floating WhatsApp Button -->
+    <a href="https://wa.me/3855374835" class="wsp-float">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766 0-3.18-2.587-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217s.231.006.332.013c.101.007.237-.038.37.281.144.354.49.1.97.1 1.258.462 1.474.144.173.346.477.534.669.925.191.191.066.365-.013.448-.079.083-.346.405-.52.607-.174.202-.34.332-.014.592.325.26 1.442 1.185 2.091 1.763.535.476.991.68 1.41.55s.678-.549.773-.837c.094-.288.094-.534.066-.592-.028-.058-.094-.094-.202-.144zM12 2a10 10 0 0 0-10 10c0 1.741.445 3.377 1.229 4.809l-1.229 4.49 4.587-1.206c1.396.732 2.981 1.157 4.662 1.157a10 10 0 0 0 10-10A10 10 0 0 0 12 2zm0 2c4.411 0 8 3.589 8 8s-3.589 8-8 8a7.963 7.963 0 0 1-4.662-1.503l-2.673.702.715-2.613A7.957 7.957 0 0 1 4 12c0-4.411 3.589-8 8-8z"/></svg>
+        <span class="hidden sm:inline">Hablar con Asesor</span>
+        <span class="sm:hidden">CONTACTAR POR WHATSAPP</span>
+    </a>
+
     <script>
         // Initialize GSAP
         gsap.registerPlugin(ScrollTrigger);
@@ -392,7 +437,7 @@
         // Letter Stagger Animation
         function animateHeadline() {
             const headline = document.getElementById('main-headline');
-            const text = "CONECTÁNDOTE AL MUNDO";
+            const text = "CONECTANDO AL MUNDO";
             headline.innerHTML = text.split('').map(char => 
                 char === ' ' ? '<span class="px-4"></span>' : `<span class="stagger-letter">${char}</span>`
             ).join('');
@@ -450,6 +495,12 @@
             mobileMenu.style.display = 'none';
         });
 
+        mobileMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                mobileMenu.style.display = 'none';
+            });
+        });
+
         // Scroll Reveal
         gsap.utils.toArray('section:not(#hero)').forEach(section => {
             gsap.from(section, {
@@ -480,8 +531,23 @@
             }
         }
 
+        function animatePlanesTitle() {
+            gsap.from('#planes-title', {
+                scrollTrigger: {
+                    trigger: '#planes',
+                    start: 'top 70%',
+                },
+                opacity: 0,
+                y: 100,
+                scale: 0.9,
+                duration: 1.5,
+                ease: 'elastic.out(1, 0.5)'
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             animateHeadline();
+            animatePlanesTitle();
             loadCmsContent();
         });
     </script>
