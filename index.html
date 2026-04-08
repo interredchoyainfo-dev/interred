@@ -119,9 +119,8 @@
 
         .plan-card:hover {
             border-color: var(--accent);
-            background: rgba(255, 0, 0, 0.05);
-            transform: translateY(-10px) scale(1.02);
-            box-shadow: 0 30px 60px -12px rgba(255, 0, 0, 0.15);
+            transform: translateY(-10px) scale(1.05);
+            box-shadow: 0 30px 60px -12px rgba(255, 0, 0, 0.25);
         }
 
         .plan-card-white {
@@ -158,31 +157,25 @@
             position: fixed;
             bottom: 30px;
             right: 30px;
-            background-color: #25d366;
-            color: #FFF;
-            border-radius: 50%;
-            width: 65px;
-            height: 65px;
-            text-align: center;
-            font-size: 30px;
-            box-shadow: 0 10px 25px rgba(37, 211, 102, 0.5);
-            z-index: 100;
+            z-index: 1000;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.3s ease;
-            text-decoration: none;
+        }
+
+        .wsp-float img {
+            width: 70px;
+            height: 70px;
+            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4));
         }
 
         .wsp-float:hover {
-            transform: scale(1.1) rotate(10deg);
-            background-color: #128c7e;
+            transform: scale(1.1) rotate(5deg);
         }
 
         @media (max-width: 640px) {
-            .wsp-float {
-                bottom: 25px;
-                right: 25px;
+            .wsp-float img {
                 width: 60px;
                 height: 60px;
             }
@@ -315,7 +308,7 @@
         <section class="py-40 bg-white px-8 sm:px-16" id="planes">
             <div class="max-w-[1400px] mx-auto">
                 <div class="w-full text-center mb-32">
-                    <h2 id="planes-title" class="font-headline text-6xl sm:text-[8rem] md:text-[10rem] font-black text-white tracking-tighter uppercase italic leading-none">PLANES</h2>
+                    <h2 id="planes-title" class="font-headline text-6xl sm:text-[8rem] md:text-[10rem] font-black text-primary tracking-tighter uppercase italic leading-none">PLANES</h2>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-12 px-4 sm:px-0">
@@ -413,8 +406,8 @@
     </main>
 
     <!-- Floating WhatsApp Button -->
-    <a href="https://wa.me/3855374835" class="wsp-float">
-        <svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766 0-3.18-2.587-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217s.231.006.332.013c.101.007.237-.038.37.281.144.354.49.1.97.1 1.258.462 1.474.144.173.346.477.534.669.925.191.191.066.365-.013.448-.079.083-.346.405-.52.607-.174.202-.34.332-.014.592.325.26 1.442 1.185 2.091 1.763.535.476.991.68 1.41.55s.678-.549.773-.837c.094-.288.094-.534.066-.592-.028-.058-.094-.094-.202-.144zM12 2a10 10 0 0 0-10 10c0 1.741.445 3.377 1.229 4.809l-1.229 4.49 4.587-1.206c1.396.732 2.981 1.157 4.662 1.157a10 10 0 0 0 10-10A10 10 0 0 0 12 2zm0 2c4.411 0 8 3.589 8 8s-3.589 8-8 8a7.963 7.963 0 0 1-4.662-1.503l-2.673.702.715-2.613A7.957 7.957 0 0 1 4 12c0-4.411 3.589-8 8-8z"/></svg>
+    <a href="https://wa.me/3855374835" target="_blank" class="wsp-float">
+        <img src="whatsapp.png" alt="WhatsApp">
     </a>
 
     <script>
