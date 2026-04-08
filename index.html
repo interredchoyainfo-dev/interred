@@ -314,9 +314,9 @@
         <!-- Planes Section -->
         <section class="py-40 bg-white px-8 sm:px-16" id="planes">
             <div class="max-w-[1400px] mx-auto">
-                <div class="flex flex-col md:flex-row md:items-end justify-between gap-12 mb-24">
+                <div class="flex flex-col items-center justify-center text-center gap-12 mb-24">
                     <div class="space-y-6">
-                        <div class="h-1.5 w-32 bg-primary rounded-full"></div>
+                        <div class="h-1.5 w-32 bg-primary rounded-full mx-auto"></div>
                         <h2 id="planes-title" class="font-headline text-5xl sm:text-[7rem] font-black text-white tracking-tighter uppercase italic leading-[0.85]">ELEGÍ TU <br/> <span class="text-primary">PLAN</span></h2>
                     </div>
                 </div>
@@ -409,8 +409,7 @@
                 </div>
             </div>
             
-            <div class="max-w-[1400px] mx-auto mt-32 pt-16 border-t border-white/5 flex justify-between items-center">
-                <p class="text-[9px] font-black text-neutral-800 uppercase tracking-[0.5em]">Global Connectivity Protocol</p>
+            <div class="max-w-[1400px] mx-auto mt-32 pt-16 border-t border-white/5 flex justify-end items-center">
                 <p class="text-[9px] font-black text-neutral-800 uppercase tracking-[0.5em]">Ver. 2.0.24</p>
             </div>
         </footer>
@@ -428,10 +427,14 @@
         // Letter Stagger Animation
         function animateHeadline() {
             const headline = document.getElementById('main-headline');
-            const text = "CONECTANDO AL MUNDO";
-            headline.innerHTML = text.split('').map(char => 
-                char === ' ' ? '<span class="px-2 sm:px-4"></span>' : `<span class="stagger-letter inline-block">${char}</span>`
-            ).join('');
+            const lines = ["CONECTANDO", "AL MUNDO"];
+            
+            headline.innerHTML = lines.map(line => {
+                const chars = line.split('').map(char => 
+                    char === ' ' ? '<span class="px-2 sm:px-4"></span>' : `<span class="stagger-letter inline-block">${char}</span>`
+                ).join('');
+                return `<div>${chars}</div>`;
+            }).join('');
 
             gsap.to('.stagger-letter', {
                 opacity: 1,
