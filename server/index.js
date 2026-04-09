@@ -170,13 +170,13 @@ app.post('/api/queue/enable', async (req, res) => {
 
 // 🟢 ACTIVAR
 app.post('/api/queue/disable', async (req, res) => {
-    const { config, ip } = req.body;
+    const { config, ip, clientName } = req.body;
 
     if (!config || !ip) {
         return res.status(400).json({ success: false, message: 'Faltan datos' });
     }
 
-    const result = await activateClient(config, ip);
+    const result = await activateClient(config, ip, clientName);
     res.json(result);
 });
 

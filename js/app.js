@@ -1053,14 +1053,18 @@ const App = {
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     Editar
                 </button>
-                <button class="detail-action-btn" onclick="App.activateService('${client.id}')" style="color: var(--accent-green); border-color: var(--accent-green);">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                    Activar Mkt
-                </button>
-                <button class="detail-action-btn" onclick="App.reduceService('${client.id}')" style="color: var(--accent-red); border-color: var(--accent-red);">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    Reducir Mkt
-                </button>
+                ${(() => {
+                    const sinIP = !client.ip || client.ip === '0.0.0.0';
+                    return `
+                    <button class="detail-action-btn" onclick="App.activateService('${client.id}')" ${sinIP ? 'disabled title="Cliente sin IP"' : ''} style="color: var(--accent-green); border-color: var(--accent-green); opacity: ${sinIP ? '0.5' : '1'};">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                        Activar Mkt
+                    </button>
+                    <button class="detail-action-btn" onclick="App.reduceService('${client.id}')" ${sinIP ? 'disabled title="Cliente sin IP"' : ''} style="color: var(--accent-red); border-color: var(--accent-red); opacity: ${sinIP ? '0.5' : '1'};">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        Reducir Mkt
+                    </button>`;
+                })()}
                 <button class="detail-action-btn detail-btn-delete" onclick="App.confirmDeleteClient('${client.id}')">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                     Eliminar
@@ -1749,16 +1753,18 @@ const App = {
                         </span>
                     </div>
                     <div class="moroso-actions">
-                        ${m.isSuspended
-                            ? `<button class="btn-moroso-action btn-moroso-activate" onclick="App.toggleMorosoSuspension('${c.id}', false)">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                                    Activar Mkt
-                               </button>`
-                            : `<button class="btn-moroso-action btn-moroso-suspend" onclick="App.toggleMorosoSuspension('${c.id}', true)">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                                    Suspender Mkt
-                               </button>`
-                        }
+                        ${(() => {
+                            const sinIP = !c.ip || c.ip === '0.0.0.0';
+                            return m.isSuspended
+                                ? `<button class="btn-moroso-action btn-moroso-activate" ${sinIP ? 'disabled title="Cliente sin IP"' : ''} style="opacity: ${sinIP ? '0.5' : '1'}" onclick="App.toggleMorosoSuspension('${c.id}', false)">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                        Activar Mkt
+                                   </button>`
+                                : `<button class="btn-moroso-action btn-moroso-suspend" ${sinIP ? 'disabled title="Cliente sin IP"' : ''} style="opacity: ${sinIP ? '0.5' : '1'}" onclick="App.toggleMorosoSuspension('${c.id}', true)">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                        Suspender Mkt
+                                   </button>`;
+                        })()}
                         <button class="btn-moroso-action" style="background: rgba(148,163,184,0.1); color: var(--text-secondary);" onclick="App.removeMorosoFromList('${c.id}')">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                             Quitar

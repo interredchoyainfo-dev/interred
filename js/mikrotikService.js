@@ -39,23 +39,33 @@ function getMikrotikConfig() {
 
 // 🔴 REDUCIR
 export async function reduceClient(client) {
+    if (!client.ip || client.ip === '0.0.0.0') {
+        console.error("❌ Cliente sin IP:", client);
+        return {
+            success: false,
+            message: "El cliente no tiene IP válida"
+        };
+    }
+
     const config = getMikrotikConfig();
+    const fullName = `${client.nombre} ${client.apellido || ''}`.trim();
 
     try {
-        console.log(`📡 Reduciendo: ${client.nombre}`);
+        console.log(`📡 Reduciendo: ${fullName} (${client.ip})`);
 
-        const response = await withTimeout((signal) => fetch(`${API_URL}/api/queue/enable`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            signal,
-            body: JSON.stringify({
-                config,
-                ip: client.ip,
-                clientName: client.nombre
+        const response = await withTimeout((signal) =>
+            fetch(`${API_URL}/api/queue/enable`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                signal,
+                body: JSON.stringify({
+                    config,
+                    ip: client.ip,
+                    clientName: fullName
+                })
             })
-        }));
+        );
 
-        // 🔴 VALIDACIÓN CLAVE
         if (!response.ok) {
             const text = await response.text();
             throw new Error(`HTTP ${response.status} - ${text}`);
@@ -66,7 +76,7 @@ export async function reduceClient(client) {
             return JSON.parse(text);
         } catch {
             console.error("❌ RESPUESTA NO JSON:", text);
-            throw new Error("El backend no devolvió JSON válido");
+            throw new Error("Backend inválido");
         }
 
     } catch (error) {
@@ -77,22 +87,33 @@ export async function reduceClient(client) {
 
 // 🟢 ACTIVAR
 export async function activateClient(client) {
+    if (!client.ip || client.ip === '0.0.0.0') {
+        console.error("❌ Cliente sin IP:", client);
+        return {
+            success: false,
+            message: "El cliente no tiene IP válida"
+        };
+    }
+
     const config = getMikrotikConfig();
+    const fullName = `${client.nombre} ${client.apellido || ''}`.trim();
 
     try {
-        console.log(`📡 Activando: ${client.nombre}`);
+        console.log(`📡 Activando: ${fullName} (${client.ip})`);
 
-        const response = await withTimeout((signal) => fetch(`${API_URL}/api/queue/disable`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            signal,
-            body: JSON.stringify({
-                config,
-                ip: client.ip
+        const response = await withTimeout((signal) =>
+            fetch(`${API_URL}/api/queue/disable`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                signal,
+                body: JSON.stringify({
+                    config,
+                    ip: client.ip,
+                    clientName: fullName
+                })
             })
-        }));
+        );
 
-        // 🔴 VALIDACIÓN CLAVE
         if (!response.ok) {
             const text = await response.text();
             throw new Error(`HTTP ${response.status} - ${text}`);
@@ -103,7 +124,7 @@ export async function activateClient(client) {
             return JSON.parse(text);
         } catch {
             console.error("❌ RESPUESTA NO JSON:", text);
-            throw new Error("El backend no devolvió JSON válido");
+            throw new Error("Backend inválido");
         }
 
     } catch (error) {

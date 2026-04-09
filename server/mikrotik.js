@@ -27,124 +27,91 @@ async function withMikrotik(config, callback) {
     }
 }
 
+/**
+ * Robustly find a queue by IP or Name
+ */
+async function findQueue(queueMenu, ip, name) {
+    const targetWithMask = ip.includes('/') ? ip : `${ip}/32`;
+    const targetRaw = ip.split('/')[0];
+
+    // 1. Try IP with mask
+    console.log(`🔍 Buscando queue por IP (máscara): ${targetWithMask}`);
+    let results = await queueMenu.where('target', targetWithMask).get();
+
+    // 2. Try IP raw
+    if (!results || results.length === 0) {
+        console.log(`🔍 Buscando queue por IP (raw): ${targetRaw}`);
+        results = await queueMenu.where('target', targetRaw).get();
+    }
+
+    // 3. Try Name
+    if ((!results || results.length === 0) && name) {
+        console.log(`🔍 Buscando queue por nombre: ${name}`);
+        results = await queueMenu.where('name', name).get();
+    }
+
+    return results && results.length > 0 ? results[0] : null;
+}
+
 // 🔴 REDUCIR
 export async function reduceClient(config, ip, clientName = 'CLIENTE') {
-    if (!isValidIP(ip)) return { success: false, message: 'IP inválida' };
+    if (!isValidIP(ip.split('/')[0])) return { success: false, message: 'IP inválida' };
 
     return withMikrotik(config, async (api) => {
         const queue = api.menu('/queue/simple');
-        const target = `${ip}/32`;
+        const targetIp = ip.includes('/') ? ip : `${ip}/32`;
+        const q = await findQueue(queue, ip, clientName);
 
-        let q = await queue.where('target', target).get();
-
-        if (!q || q.length === 0) {
+        if (!q) {
+            console.log(`➕ Creando nueva queue para ${clientName} (${targetIp})`);
             await queue.add({
                 name: clientName.toUpperCase(),
-                target: target,
+                target: targetIp,
                 "max-limit": "1k/1k",
                 disabled: "no",
                 comment: `InterRed | LIMITADO | ${clientName}`
             });
-
-            return { success: true, message: "Cliente creado y reducido" };
+            return { success: true, message: "Cliente creado y limitado" };
         }
 
+        console.log(`🛠️ Actualizando queue existente: ${q.name}`);
         await queue.set({
-            ".id": q[0][".id"],
+            ".id": q[".id"],
             "max-limit": "1k/1k",
             disabled: "no",
             comment: `InterRed | LIMITADO | ${clientName}`
         });
 
-        return { success: true, message: "Cliente reducido" };
+        return { success: true, message: "Cliente limitado" };
     });
 }
 
-// Alias para compatibilidad
-export const suspendClient = reduceClient;
-
 // 🟢 ACTIVAR
-export async function activateClient(config, ip) {
-    if (!isValidIP(ip)) return { success: false, message: 'IP inválida' };
+export async function activateClient(config, ip, clientName = '') {
+    if (!isValidIP(ip.split('/')[0])) return { success: false, message: 'IP inválida' };
 
     return withMikrotik(config, async (api) => {
         const queue = api.menu('/queue/simple');
-        const target = `${ip}/32`;
+        const q = await findQueue(queue, ip, clientName);
 
-        let q = await queue.where('target', target).get();
-
-        if (!q || q.length === 0) {
-            return { success: false, message: "No existe queue" };
+        if (!q) {
+            return { success: false, message: "No se encontró la cola del cliente en MikroTik" };
         }
 
+        console.log(`✅ Activando servicio para: ${q.name}`);
         await queue.set({
-            ".id": q[0][".id"],
+            ".id": q[".id"],
             "max-limit": "0/0",
             disabled: "no",
-            comment: "InterRed | ACTIVO"
+            comment: `InterRed | ACTIVO | ${new Date().toLocaleDateString()}`
         });
 
         return { success: true, message: "Cliente activado" };
     });
 }
 
-
-
-// ---- Name Based Control (New Logic) ----
-
-export async function suspendQueueByName(config, name, clientName = 'Desconocido') {
-    if (!name) throw new Error('Nombre de queue requerido');
-
-    return withMikrotik(config, async (api) => {
-        const queueMenu = api.menu('/queue/simple');
-        const results = await queueMenu.where('name', name).get();
-
-        if (results.length === 0) {
-            return { success: false, message: `No se encontró Simple Queue con nombre: ${name}` };
-        }
-
-        const queueId = results[0]['.id'];
-        await queueMenu.set({
-            '.id': queueId,
-            disabled: 'no',
-            comment: `InterRed | LIMITADO | ${clientName} | ${new Date().toLocaleString()}`
-        });
-
-        return { 
-            success: true, 
-            action: 'suspended', 
-            name, 
-            message: `Queue ${name} limitada exitosamente.` 
-        };
-    });
-}
-
-export async function activateQueueByName(config, name) {
-    if (!name) throw new Error('Nombre de queue requerido');
-
-    return withMikrotik(config, async (api) => {
-        const queueMenu = api.menu('/queue/simple');
-        const results = await queueMenu.where('name', name).get();
-
-        if (results.length === 0) {
-            return { success: false, message: `No se encontró Simple Queue con nombre: ${name}` };
-        }
-
-        const queueId = results[0]['.id'];
-        await queueMenu.set({
-            '.id': queueId,
-            disabled: 'yes',
-            comment: `InterRed | ACTIVO | ${new Date().toLocaleString()}`
-        });
-
-        return { 
-            success: true, 
-            action: 'activated', 
-            name, 
-            message: `Queue ${name} activada exitosamente.` 
-        };
-    });
-}
+// Alias para compatibilidad
+export const suspendClient = reduceClient;
 
 export async function testConnection(config) {
     return withMikrotik(config, async (api) => {
@@ -193,23 +160,6 @@ export async function rebootRouter(config) {
     });
 }
 
-export async function getMorososList(config) {
-    return withMikrotik(config, async (api) => {
-        const addressListMenu = api.menu('/ip/firewall/address-list');
-        const listName = config.addressListName || 'morosos';
-        const results = await addressListMenu.where('list', listName).get();
-
-        const suspended = (results || []).map(item => ({
-            id: item['.id'],
-            name: item.comment || 'Desconocido', // guardamos el nombre en comment
-            target: item.address,
-            comment: item.comment
-        }));
-
-        return { success: true, count: suspended.length, clients: suspended };
-    });
-}
-
 export async function listSimpleQueues(config) {
     return withMikrotik(config, async (api) => {
         const results = await api.menu('/queue/simple').get();
@@ -218,54 +168,5 @@ export async function listSimpleQueues(config) {
             target: q.target
         }));
         return { success: true, data };
-    });
-}
-
-export async function updateClientQueue(config, clientIp, clientName, action) {
-    if (!clientIp) throw new Error('IP de cliente requerida');
-    
-    return withMikrotik(config, async (api) => {
-        const queueMenu = api.menu('/queue/simple');
-        const ahora = new Date().toLocaleString('es-AR');
-        
-        // 1. Buscamos la cola (Prioridad IP, luego Nombre)
-        const targetIp = clientIp.includes('/') ? clientIp : `${clientIp}/32`;
-        let queues = await queueMenu.where('target', targetIp).get();
-
-        if (!queues || queues.length === 0) {
-            queues = await queueMenu.where('name', clientName).get();
-        }
-
-        const esCorte = action === 'suspend';
-        const estado = esCorte ? 'LIMITADO' : 'ACTIVO';
-        const clientNameUpper = clientName ? clientName.toUpperCase() : 'DESCONOCIDO';
-        const nuevoComentario = `InterRed | ${estado} | ${clientNameUpper} | ${ahora}`;
-
-        let queueId;
-
-        if (queues && queues.length > 0) {
-            // Ya existe
-            queueId = queues[0]['.id'];
-            await queueMenu.set({
-                '.id': queueId,
-                "max-limit": "1k/1k",
-                disabled: esCorte ? 'no' : 'yes', // Si cortamos, la regla 1k se HABILITA (disabled: no).
-                comment: nuevoComentario
-            });
-            console.log(`✅ ${clientNameUpper} status actualizado a ${estado}`);
-        } else {
-            // 🚀 NO EXISTE -> CREAMOS LA COLA
-            console.log(`⚠️ Cola no encontrada para ${clientNameUpper}. Creándola...`);
-            const created = await queueMenu.add({
-                name: clientNameUpper,
-                target: targetIp,
-                "max-limit": "1k/1k", // Limitado a 1k para reducir el servicio al 100%
-                disabled: esCorte ? 'no' : 'yes', // Habilitamos la regla si es corte
-                comment: nuevoComentario
-            });
-            console.log(`✅ Cola creada para ${clientNameUpper} con 1k/1k`);
-        }
-
-        return { success: true, action: action, message: `Cliente ${estado} con éxito` };
     });
 }
