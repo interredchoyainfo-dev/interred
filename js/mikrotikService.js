@@ -63,20 +63,13 @@ async function findQueue(client) {
 }
 
 export async function activateClient(client) {
-    const queue = await findQueue(client);
-    if (!queue) {
-        log(`No se encontró queue válida para: ${client.nombre} (${client.ip})`);
-        return { success: false, message: 'No se encontró la cola respectiva en MikroTik' };
-    }
-
     const config = getMikrotikConfig();
     try {
         const fetchFunc = window.safeFetch || fetch;
-        // activateClient (Normal) -> queue disabled = YES (using the validated name)
-        const data = await withTimeout(fetchFunc(`${API_URL}/api/queue/disable`, {
+        const data = await withTimeout(fetchFunc(`${API_URL}/activate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ config, name: queue.name })
+            body: JSON.stringify({ config, ip: client.ip })
         }));
         return data;
     } catch (e) {
@@ -86,22 +79,15 @@ export async function activateClient(client) {
 }
 
 export async function reduceClient(client) {
-    const queue = await findQueue(client);
-    if (!queue) {
-        log(`No se encontró queue válida para: ${client.nombre} (${client.ip})`);
-        return { success: false, message: 'No se encontró la cola respectiva en MikroTik' };
-    }
-
     const config = getMikrotikConfig();
     try {
         const fetchFunc = window.safeFetch || fetch;
-        // reduceClient (Moroso) -> queue disabled = NO (Enabled) (using the validated name)
-        const data = await withTimeout(fetchFunc(`${API_URL}/api/queue/enable`, {
+        const data = await withTimeout(fetchFunc(`${API_URL}/suspend`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 config, 
-                name: queue.name,
+                ip: client.ip,
                 clientName: client.nombre 
             })
         }));

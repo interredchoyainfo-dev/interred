@@ -8,7 +8,7 @@ import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { suspendClient, activateClient, testConnection, getMorososList, getSystemStatus, rebootRouter, listSimpleQueues } from './mikrotik.js';
+import { reduceClient, activateClient, testConnection, getMorososList, getSystemStatus, rebootRouter, listSimpleQueues } from './mikrotik.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -105,7 +105,7 @@ app.post('/suspend', async (req, res) => {
         return res.status(400).json({ success: false, message: 'Faltan datos: config, ip' });
     }
     try {
-        const result = await suspendClient(config, ip, clientName);
+        const result = await reduceClient(config, ip, clientName);
         console.log(`🔴 Suspendido en Mikrotik (Port 3000): ${ip}`);
         res.json(result);
     } catch (error) {
@@ -245,7 +245,7 @@ app.post('/bulk-suspend', async (req, res) => {
     const results = [];
     for (const item of ips) {
         try {
-            const result = await suspendClient(config, item.ip, item.clientName);
+            const result = await reduceClient(config, item.ip, item.clientName);
             results.push(result);
         } catch (e) { results.push({ success: false, ip: item.ip }); }
     }

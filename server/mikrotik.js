@@ -30,87 +30,57 @@ async function withMikrotik(config, callback) {
     }
 }
 
-export async function suspendClient(config, ip, clientName = 'Desconocido') {
+export async function reduceClient(config, ip, clientName) {
     if (!isValidIP(ip)) throw new Error('IP inválida');
-    const cleanIp = ip.split('/')[0];
-    const targetIp = ip.includes('/') ? ip : `${ip}/32`;
-
     return withMikrotik(config, async (api) => {
-        const queueMenu = api.menu('/queue/simple');
-        
-        console.log(`🔍 Iniciando búsqueda para: ${clientName} (${cleanIp})`);
+        const queue = api.menu('/queue/simple');
+        const target = ip.includes('/') ? ip : `${ip}/32`;
 
-        // 1. INTENTO POR IP (El más preciso)
-        let queues = await queueMenu.where('target', targetIp).get();
+        let q = await queue.where('target', target).get();
 
-        if (queues && queues.length > 0) {
-            console.log(`✅ Cliente encontrado por IP: ${queues[0].name}`);
-        } else {
-            // 2. INTENTO POR NOMBRE (Respaldo)
-            console.log(`⚠️ No se encontró por IP, intentando por nombre exacto: ${clientName}`);
-            queues = await queueMenu.where('name', clientName).get();
+        if (!q || q.length === 0) {
+            // 🔥 SI NO EXISTE → CREAR
+            await queue.add({
+                name: clientName || ip,
+                target: target,
+                "max-limit": "1k/1k"
+            });
+
+            return { success: true, message: "Cliente creado y reducido" };
         }
 
-        // 3. INTENTO POR NOMBRE PARCIAL (Último recurso)
-        if (!queues || queues.length === 0) {
-            console.log(`🔎 Buscando coincidencias parciales de nombre...`);
-            const allQueues = await queueMenu.get();
-            queues = (allQueues || []).filter(q => q.name && q.name.toLowerCase().includes(clientName.toLowerCase()));
-        }
+        // 🔥 SI EXISTE → MODIFICAR
+        await queue.set({
+            ".id": q[0][".id"],
+            "max-limit": "1k/1k",
+            disabled: "no"
+        });
 
-        if (queues && queues.length > 0) {
-            try {
-                // Una vez encontrado, lo metemos a la lista de morosos para el límite de 1k
-                await api.menu('/ip/firewall/address-list').add({
-                    list: config.addressListName || 'morosos',
-                    address: cleanIp,
-                    comment: `Corte Automático: ${clientName}`
-                });
-
-                return { 
-                    success: true, 
-                    message: `Servicio reducido para ${queues[0].name} (Encontrado por ${queues[0].target.includes(cleanIp) ? 'IP' : 'Nombre'})` 
-                };
-            } catch (error) {
-                if (error.message && error.message.includes("already exists")) {
-                    return { 
-                        success: true, 
-                        message: `Servicio reducido para ${queues[0].name} (Ya estaba limitado)` 
-                    };
-                }
-                throw error;
-            }
-        } else {
-            throw new Error(`Imposible encontrar al cliente. Verificá que la IP ${cleanIp} o el nombre coincidan en el MikroTik.`);
-        }
+        return { success: true, message: "Cliente reducido correctamente" };
     });
 }
 
 export async function activateClient(config, ip) {
     if (!isValidIP(ip)) throw new Error('IP inválida');
-    const cleanIp = ip.split('/')[0];
-
     return withMikrotik(config, async (api) => {
-        const addressListMenu = api.menu('/ip/firewall/address-list');
-        const listName = config.addressListName || 'morosos';
-        const results = await addressListMenu.where('address', cleanIp).where('list', listName).get();
+        const queue = api.menu('/queue/simple');
+        const target = ip.includes('/') ? ip : `${ip}/32`;
 
-        if (results.length === 0) {
-            // No estaba en la lista, consideramos que está activo
-            return { success: true, message: `El cliente ya estaba activo` };
+        let q = await queue.where('target', target).get();
+
+        if (!q || q.length === 0) {
+            return { success: false, message: "No existe queue" };
         }
 
-        const itemId = results[0]['.id'];
-        await addressListMenu.remove(itemId);
+        await queue.set({
+            ".id": q[0][".id"],
+            "max-limit": "0/0"
+        });
 
-        return { 
-            success: true, 
-            action: 'activated', 
-            ip, 
-            message: `Servicio restaurado (Removido de morosos).` 
-        };
+        return { success: true, message: "Cliente activado" };
     });
 }
+
 
 // ---- Name Based Control (New Logic) ----
 
