@@ -8,7 +8,7 @@ function isValidIP(ip) {
  * Connects to MikroTik and executes a callback with the API handle.
  */
 async function withMikrotik(config, callback) {
-    const port = parseInt(config.port) || 9728;
+    const port = parseInt(config.port) || 8728;
     const api = new RouterOSClient({
         host: config.host,
         port: port,
@@ -229,27 +229,36 @@ export async function updateClientQueue(config, clientIp, clientName, action) {
             queues = await queueMenu.where('name', clientName).get();
         }
 
-        if (queues && queues.length > 0) {
-            const queueId = queues[0]['.id'];
-            const esCorte = action === 'suspend';
-            
-            // 2. Definimos el formato del comentario que pediste
-            // Ej: InterRed | LIMITADO | CECILIA | 30/3/2026, 2:00:16
-            const estado = esCorte ? 'LIMITADO' : 'ACTIVO';
-            const clientNameUpper = clientName ? clientName.toUpperCase() : 'DESCONOCIDO';
-            const nuevoComentario = `InterRed | ${estado} | ${clientNameUpper} | ${ahora}`;
+        const esCorte = action === 'suspend';
+        const estado = esCorte ? 'LIMITADO' : 'ACTIVO';
+        const clientNameUpper = clientName ? clientName.toUpperCase() : 'DESCONOCIDO';
+        const nuevoComentario = `InterRed | ${estado} | ${clientNameUpper} | ${ahora}`;
 
-            // 3. Aplicamos el cambio en la Simple Queue
+        let queueId;
+
+        if (queues && queues.length > 0) {
+            // Ya existe
+            queueId = queues[0]['.id'];
             await queueMenu.set({
                 '.id': queueId,
-                disabled: esCorte ? 'yes' : 'no',
+                "max-limit": "1k/1k",
+                disabled: esCorte ? 'no' : 'yes', // Si cortamos, la regla 1k se HABILITA (disabled: no).
                 comment: nuevoComentario
             });
-
-            console.log(`✅ ${clientNameUpper} marcado como ${estado}`);
-            return { success: true, action: action, message: `Cliente ${estado} con éxito` };
+            console.log(`✅ ${clientNameUpper} status actualizado a ${estado}`);
         } else {
-            throw new Error("No se encontró la cola del cliente en el MikroTik");
+            // 🚀 NO EXISTE -> CREAMOS LA COLA
+            console.log(`⚠️ Cola no encontrada para ${clientNameUpper}. Creándola...`);
+            const created = await queueMenu.add({
+                name: clientNameUpper,
+                target: targetIp,
+                "max-limit": "1k/1k", // Limitado a 1k para reducir el servicio al 100%
+                disabled: esCorte ? 'no' : 'yes', // Habilitamos la regla si es corte
+                comment: nuevoComentario
+            });
+            console.log(`✅ Cola creada para ${clientNameUpper} con 1k/1k`);
         }
+
+        return { success: true, action: action, message: `Cliente ${estado} con éxito` };
     });
 }
