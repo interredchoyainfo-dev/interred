@@ -6,7 +6,7 @@ const isLocal =
 // URL del backend (Render API para producción)
 export const API_URL = isLocal
   ? "http://localhost:3000"
-  : "https://interred-1.onrender.com";
+  : "https://interred-api.onrender.com";
 
 // Timeout estándar para fetch
 export const API_TIMEOUT = 30000;
