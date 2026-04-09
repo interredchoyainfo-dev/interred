@@ -2263,13 +2263,20 @@ const App = {
         const settings = DB.getSettings();
         const router = settings.routers[settings.activeRouterIndex] || settings.routers[0];
         
-        // Populate form fields
-        document.getElementById('setting-mikrotik-name').value = router.name || '';
-        document.getElementById('setting-mikrotik-host').value = router.host || '';
-        document.getElementById('setting-mikrotik-port').value = router.port || '8728';
-        document.getElementById('setting-mikrotik-user').value = router.user || '';
-        document.getElementById('setting-mikrotik-password').value = router.password || '';
-        document.getElementById('setting-mikrotik-list').value = router.addressList || 'morosos';
+        // Form fields
+        const nameEl = document.getElementById('setting-mikrotik-name');
+        const hostEl = document.getElementById('setting-mikrotik-host');
+        const portEl = document.getElementById('setting-mikrotik-port');
+        const userEl = document.getElementById('setting-mikrotik-user');
+        const passEl = document.getElementById('setting-mikrotik-password');
+        const listEl = document.getElementById('setting-mikrotik-list');
+
+        if (nameEl) nameEl.value = router.name || '';
+        if (hostEl) hostEl.value = router.host || '';
+        if (portEl) portEl.value = router.port || '8728';
+        if (userEl) userEl.value = router.user || '';
+        if (passEl) passEl.value = router.password || '';
+        if (listEl) listEl.value = router.addressList || 'morosos';
 
         const config = {
             host: router.host,
@@ -2279,6 +2286,7 @@ const App = {
         };
 
         const statusEl = document.getElementById('mk-status-text');
+        if (!statusEl) return;
         
         if (!config.host || !config.user || !config.password) {
             statusEl.textContent = 'Sin Configurar';
@@ -2286,8 +2294,10 @@ const App = {
             return;
         }
 
-        statusEl.textContent = 'Conectando...';
-        statusEl.style.color = '#ff9800';
+        if (!this.mkAutoRefreshTimer) {
+            statusEl.textContent = 'Conectando...';
+            statusEl.style.color = '#ff9800';
+        }
 
         try {
             const { getMikrotikStatus } = await import('./mikrotikService.js');
@@ -2298,21 +2308,16 @@ const App = {
                 statusEl.style.color = '#25D366';
                 
                 document.getElementById('mk-uptime').textContent = res.uptime;
-                document.getElementById('mk-cpu').textContent = res.cpuLoad + '%';
+                document.getElementById('mk-cpu').textContent = `CPU: ${res.cpuLoad}%`;
                 
-                // Convert bytes to MB
-                const freeMB = (parseInt(res.freeMemory) / 1024 / 1024).toFixed(1);
-                const totalMB = (parseInt(res.totalMemory) / 1024 / 1024).toFixed(1);
-                document.getElementById('mk-ram').textContent = `${freeMB} / ${totalMB} MB`;
+                // RAM conversion
+                const freeMB = (parseInt(res.freeMemory) / 1024 / 1024).toFixed(0);
+                const totalMB = (parseInt(res.totalMemory) / 1024 / 1024).toFixed(0);
+                document.getElementById('mk-ram').textContent = `RAM: ${freeMB} / ${totalMB} MB`;
 
-                // Render Interfaces
-                const intfList = document.getElementById('mk-interfaces-list');
-                let totalRxMbps = 0;
-                let totalTxMbps = 0;
-
+                // Rebuild Selector if needed
                 const selector = document.getElementById('mk-interface-selector');
                 if (selector && res.interfaces) {
-                    // Check if we need to rebuild the options (different interface count or names)
                     const currentNames = Array.from(selector.options).map(o => o.value).filter(v => v !== 'ALL').join(',');
                     const newNames = res.interfaces.map(i => i.name).join(',');
                     
@@ -2325,91 +2330,107 @@ const App = {
                           selector.appendChild(opt);
                       });
                       
-                      // Ensure listener is only added once
                       if (!selector.hasListener) {
                         selector.addEventListener('change', (e) => {
                             this.mkSelectedInterface = e.target.value;
+                            // Clear totals upon switching interface to avoid mixed stats
+                            this._mkSessionRx = 0;
+                            this._mkSessionTx = 0;
                         });
                         selector.hasListener = true;
                       }
                     }
                 }
 
+                const intfList = document.getElementById('mk-interfaces-list');
                 if (res.interfaces && res.interfaces.length > 0) {
                     const now = Date.now();
                     const elapsed = this._mkLastPollTime ? (now - this._mkLastPollTime) / 1000 : 5;
                     this._mkLastPollTime = now;
 
+                    let totalRxMbps = 0;
+                    let totalTxMbps = 0;
+                    
+                    // Initialize session counters if they don't exist
+                    if (this._mkSessionRx === undefined) this._mkSessionRx = 0;
+                    if (this._mkSessionTx === undefined) this._mkSessionTx = 0;
+
                     intfList.innerHTML = res.interfaces.map(i => {
                         const rxBytes = parseInt(i.rxByte || 0);
                         const txBytes = parseInt(i.txByte || 0);
-                        const rxMB = (rxBytes / 1024 / 1024).toFixed(2);
-                        const txMB = (txBytes / 1024 / 1024).toFixed(2);
-
-                        // Calculate delta Mbps
+                        
+                        // Deltas for Mbps
                         const prevRx = this.mkPrevRxBytes?.[i.name] || 0;
                         const prevTx = this.mkPrevTxBytes?.[i.name] || 0;
                         
                         let rxMbps = 0, txMbps = 0;
                         if (prevRx > 0 && elapsed > 0) {
-                            rxMbps = ((rxBytes - prevRx) * 8 / 1000000) / elapsed;
-                            txMbps = ((txBytes - prevTx) * 8 / 1000000) / elapsed;
-                            if (rxMbps < 0) rxMbps = 0;
-                            if (txMbps < 0) txMbps = 0;
+                            const deltaRx = Math.max(0, rxBytes - prevRx);
+                            const deltaTx = Math.max(0, txBytes - prevTx);
+                            rxMbps = (deltaRx * 8 / 1000000) / elapsed;
+                            txMbps = (deltaTx * 8 / 1000000) / elapsed;
+                            
+                            // Accumulate session total only for selected interface(s)
+                            if (this.mkSelectedInterface === 'ALL' || this.mkSelectedInterface === i.name) {
+                                this._mkSessionRx += deltaRx;
+                                this._mkSessionTx += deltaTx;
+                                totalRxMbps += rxMbps;
+                                totalTxMbps += txMbps;
+                            }
                         }
 
                         this.mkPrevRxBytes[i.name] = rxBytes;
                         this.mkPrevTxBytes[i.name] = txBytes;
                         
-                        if (this.mkSelectedInterface === 'ALL' || this.mkSelectedInterface === i.name) {
-                            totalRxMbps += rxMbps;
-                            totalTxMbps += txMbps;
-                        }
-
-                        const rxDisplay = rxMbps >= 1 ? rxMbps.toFixed(1) + ' Mbps' : (rxMbps * 1000).toFixed(0) + ' Kbps';
-                        const txDisplay = txMbps >= 1 ? txMbps.toFixed(1) + ' Mbps' : (txMbps * 1000).toFixed(0) + ' Kbps';
+                        const rxDisp = rxMbps >= 1 ? rxMbps.toFixed(1) + ' Mbps' : (rxMbps * 1000).toFixed(0) + ' Kbps';
+                        const txDisp = txMbps >= 1 ? txMbps.toFixed(1) + ' Mbps' : (txMbps * 1000).toFixed(0) + ' Kbps';
 
                         return `
-                            <div style="background: var(--bg-hover); padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color);">
+                            <div style="background: var(--bg-hover); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color);">
                                 <div>
-                                    <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">
-                                        ${i.running ? '<span style="color: #25D366;">●</span>' : '<span style="color: #ff4d4d;">●</span>'} 
+                                    <div style="font-weight: 600; font-size: 14px; margin-bottom: 2px;">
+                                        <span style="color: ${i.running ? '#25D366' : '#ff4d4d'}; margin-right: 4px;">●</span> 
                                         ${i.name}
                                     </div>
-                                    <div style="font-size: 12px; color: var(--text-secondary);">Tipo: ${i.type}</div>
+                                    <div style="font-size: 11px; opacity: 0.6;">Tipo: ${i.type}</div>
                                 </div>
                                 <div style="text-align: right; font-size: 12px;">
-                                    <div style="color: #3b82f6;">⬇️ ${rxDisplay} <span style="opacity:0.5">(${rxMB} MB)</span></div>
-                                    <div style="color: #10b981;">⬆️ ${txDisplay} <span style="opacity:0.5">(${txMB} MB)</span></div>
+                                    <div style="color: #3b82f6; font-weight: 600;">⬇️ ${rxDisp}</div>
+                                    <div style="color: #ef4444; font-weight: 600;">⬆️ ${txDisp}</div>
                                 </div>
                             </div>
                         `;
                     }).join('');
 
-                    // Update live display
+                    // Update Live Stats
                     const rxLive = document.getElementById('mk-rx-live');
                     const txLive = document.getElementById('mk-tx-live');
+                    const rxTotal = document.getElementById('mk-rx-total');
+                    const txTotal = document.getElementById('mk-tx-total');
+
                     if (rxLive) rxLive.textContent = totalRxMbps.toFixed(2) + ' Mbps';
                     if (txLive) txLive.textContent = totalTxMbps.toFixed(2) + ' Mbps';
+                    
+                    const formatBytes = (b) => {
+                        if (b >= 1073741824) return (b / 1073741824).toFixed(2) + ' GB';
+                        return (b / 1048576).toFixed(1) + ' MB';
+                    };
+
+                    if (rxTotal) rxTotal.textContent = `Sesión: ${formatBytes(this._mkSessionRx)}`;
+                    if (txTotal) txTotal.textContent = `Sesión: ${formatBytes(this._mkSessionTx)}`;
 
                     this.updateMikrotikChart(totalRxMbps, totalTxMbps);
                 } else {
-                    intfList.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 10px;">No se encontraron interfaces activas</p>';
+                    intfList.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">No se encontraron interfaces</p>';
                 }
 
             } else {
                 statusEl.textContent = 'Falló Conexión';
                 statusEl.style.color = '#ff4d4d';
-                if (!this.mkAutoRefreshTimer) {
-                    this.showToast('No se pudo conectar al router', 'error');
-                }
             }
         } catch (e) {
             statusEl.textContent = 'Error Servidor';
             statusEl.style.color = '#ff4d4d';
-            if (!this.mkAutoRefreshTimer) {
-                this.showToast('El micro-servicio backend no está respondiendo', 'error');
-            }
         }
     },
 

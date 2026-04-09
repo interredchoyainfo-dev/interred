@@ -219,48 +219,72 @@
 
                     <!-- Status Display -->
                     <div class="mikrotik-stats-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px;">
-                        <div class="stat-card" style="background: var(--card-bg); border: 1px solid var(--border-color);">
+                        <div class="stat-card" style="background: var(--card-bg); border: 1px solid var(--border-color); padding: 15px;">
                             <span class="stat-label">Estado</span>
-                            <span class="stat-number" id="mk-status-text" style="font-size: 16px; color: #ff4d4d;">Desconectado</span>
+                            <span class="stat-number" id="mk-status-text" style="font-size: 16px; color: #ff4d4d; font-weight: 700;">Desconectado</span>
                         </div>
-                        <div class="stat-card" style="background: var(--card-bg); border: 1px solid var(--border-color);">
+                        <div class="stat-card" style="background: var(--card-bg); border: 1px solid var(--border-color); padding: 15px;">
                             <span class="stat-label">Uptime</span>
                             <span class="stat-number" id="mk-uptime" style="font-size: 16px;">-</span>
                         </div>
-                        <div class="stat-card" style="background: var(--card-bg); border: 1px solid var(--border-color);">
-                            <span class="stat-label">CPU Load</span>
-                            <span class="stat-number" id="mk-cpu" style="font-size: 16px;">0%</span>
+                        <div class="stat-card" style="background: var(--card-bg); border: 1px solid var(--border-color); padding: 15px;">
+                            <span class="stat-label">CPU / RAM</span>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <span class="stat-number" id="mk-cpu" style="font-size: 15px; color: var(--accent-blue);">CPU: 0%</span>
+                                <span id="mk-ram" style="font-size: 12px; opacity: 0.8;">RAM: 0 MB</span>
+                            </div>
                         </div>
-                        <div class="stat-card" style="background: var(--card-bg); border: 1px solid var(--border-color);">
-                            <span class="stat-label">Memoria Libre</span>
-                            <span class="stat-number" id="mk-ram" style="font-size: 16px;">0 MB</span>
+                        <div class="stat-card" style="background: var(--card-bg); border: 1px solid var(--border-color); padding: 15px;">
+                            <span class="stat-label">Autorefresco</span>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
+                                <label class="toggle" style="transform: scale(0.8); origin: left;">
+                                    <input type="checkbox" id="mk-auto-refresh-toggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span id="mk-auto-status" style="font-size: 11px; opacity: 0.7;">Detenido</span>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Graph Section -->
-                    <div class='settings-group' style='padding: 15px;'>
-                        <h3 class='settings-group-title' style='margin-bottom: 12px; display: flex; justify-content: space-between;'>
-                            Tráfico en Vivo (Mbps)
-                            <span style='font-size: 11px; font-weight: 400; opacity: 0.6;'>Ult. 60 seg.</span>
-                        </h3>
+                    <div class='settings-group' style='padding: 15px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px;'>
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                            <div>
+                                <h3 class='settings-group-title' style='margin: 0;'>Tráfico en Tiempo Real</h3>
+                                <p style="font-size: 11px; opacity: 0.6; margin: 4px 0 0 0;">Ancho de banda actual por interface</p>
+                            </div>
+                            <select id="mk-refresh-interval" class="setting-input" style="width: auto; padding: 4px 8px; font-size: 11px; height: auto;">
+                                <option value="2000">Cada 2 seg.</option>
+                                <option value="5000" selected>Cada 5 seg.</option>
+                                <option value="10000">Cada 10 seg.</option>
+                            </select>
+                        </div>
+
                         <!-- Interface Selector -->
-                        <div style='margin-bottom: 12px;'>
-                            <select id='mk-interface-selector' class='setting-input' style='background: var(--bg-hover); border: 1px solid var(--border-color); color: var(--text-primary); padding: 5px 10px; border-radius: 6px; width: 100%; font-size: 13px;'>
+                        <div style='margin-bottom: 15px;'>
+                            <select id='mk-interface-selector' class='setting-input' style='background: var(--bg-hover); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px 12px; border-radius: 8px; width: 100%; font-size: 13px; font-weight: 500;'>
                                 <option value='ALL'>Monitorear: Todas las Interfaces</option>
                             </select>
                         </div>
+
+                        <!-- Live Counters -->
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px;">
+                            <div style="background: rgba(59, 130, 246, 0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.1);">
+                                <div style="font-size: 10px; color: #3b82f6; text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">⬇️ BAJADA (RX)</div>
+                                <div id="mk-rx-live" style="font-size: 18px; font-weight: 800; color: #3b82f6;">0.00 Mbps</div>
+                                <div id="mk-rx-total" style="font-size: 10px; opacity: 0.6; margin-top: 2px;">Total: 0 MB</div>
+                            </div>
+                            <div style="background: rgba(239, 68, 68, 0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.1);">
+                                <div style="font-size: 10px; color: #ef4444; text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">⬆️ SUBIDA (TX)</div>
+                                <div id="mk-tx-live" style="font-size: 18px; font-weight: 800; color: #ef4444;">0.00 Mbps</div>
+                                <div id="mk-tx-total" style="font-size: 10px; opacity: 0.6; margin-top: 2px;">Total: 0 MB</div>
+                            </div>
+                        </div>
+
                         <div style='height: 180px; width: 100%; position: relative;'>
                             <canvas id='mk-traffic-chart'></canvas>
                         </div>
-                        <div style='display: flex; gap: 15px; margin-top: 10px; justify-content: center; font-size: 10px;'>
-                            <span style='display: flex; align-items: center; gap: 5px;'>
-                                <div style='width: 8px; height: 8px; background: #3b82f6; border-radius: 2px;'></div> RX (Bajada)
-                            </span>
-                            <span style='display: flex; align-items: center; gap: 5px;'>
-                                <div style='width: 8px; height: 8px; background: #ef4444; border-radius: 2px;'></div> TX (Subida)
-                            </span>
-                        </div>
-                    </div>
+                    </div></div>
                     <div class="settings-group">
                         <h3 class="settings-group-title">Interfaces Activas</h3>
                         <div id="mk-interfaces-list" style="display: flex; flex-direction: column; gap: 8px;">
