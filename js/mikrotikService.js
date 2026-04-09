@@ -3,35 +3,48 @@ import { API_URL } from './config.js';
 
 const TIMEOUT = 30000;
 
-async function withTimeout(fetchPromise) {
+/**
+ * Utility function for fetch calls with timeout and robust error handling
+ */
+async function fetchWithTimeout(url, options = {}) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT);
+    const id = setTimeout(() => controller.abort(), TIMEOUT);
 
     try {
-        const response = await fetchPromise(controller.signal);
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
 
-        // 🔴 VALIDACIÓN FUERTE
-        if (!(response instanceof Response)) {
-            throw new Error("La respuesta no es válida (no es Response)");
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`HTTP ${response.status} - ${text}`);
         }
 
-        return response;
+        const text = await response.text();
+
+        try {
+            return JSON.parse(text);
+        } catch {
+            console.error("❌ Backend NO devolvió JSON:", text);
+            throw new Error("Respuesta inválida del servidor (no JSON)");
+        }
 
     } catch (error) {
-        if (error.name === 'AbortError') {
+        if (error.name === "AbortError") {
             throw new Error("Timeout MikroTik (30s)");
         }
         throw error;
     } finally {
-        clearTimeout(timeoutId);
+        clearTimeout(id);
     }
 }
 
 function getMikrotikConfig() {
     const settings = DB.getSettings();
     return {
-        host: settings.mikrotikHost || '181.209.118.162', // 🔥 USAR IP DIRECTA (NO DNS)
-        port: 8728, // 🔥 FIJO
+        host: settings.mikrotikHost || '181.209.118.162',
+        port: 8728,
         user: settings.mikrotikUser || 'interred_api',
         password: settings.mikrotikPassword || 'InterRed2026'
     };
@@ -39,132 +52,81 @@ function getMikrotikConfig() {
 
 // 🔴 REDUCIR
 export async function reduceClient(client) {
-    if (!client.ip || client.ip === '0.0.0.0') {
-        console.error("❌ Cliente sin IP:", client);
-        return {
-            success: false,
-            message: "El cliente no tiene IP válida"
-        };
+    if (!client.ip || client.ip === "0.0.0.0") {
+        return { success: false, message: "Cliente sin IP válida" };
     }
 
-    const config = getMikrotikConfig();
-    const fullName = `${client.nombre} ${client.apellido || ''}`.trim();
-
     try {
-        console.log(`📡 Reduciendo: ${fullName} (${client.ip})`);
+        const fullName = `${client.nombre} ${client.apellido || ''}`.trim();
+        console.log("📡 Reduciendo:", fullName);
 
-        const response = await withTimeout((signal) =>
-            fetch(`${API_URL}/api/queue/enable`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                signal,
-                body: JSON.stringify({
-                    config,
-                    ip: client.ip,
-                    clientName: fullName
-                })
+        return await fetchWithTimeout(`${API_URL}/api/queue/enable`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                config: getMikrotikConfig(),
+                ip: client.ip,
+                clientName: fullName
             })
-        );
+        });
 
-        if (!response.ok) {
-            const text = await response.text();
-            throw new Error(`HTTP ${response.status} - ${text}`);
-        }
-
-        const text = await response.text();
-        try {
-            return JSON.parse(text);
-        } catch {
-            console.error("❌ RESPUESTA NO JSON:", text);
-            throw new Error("Backend inválido");
-        }
-
-    } catch (error) {
-        console.error("❌ ERROR REDUCIR:", error.message);
-        return { success: false, message: error.message };
+    } catch (e) {
+        console.error("❌ ERROR REDUCIR:", e.message);
+        return { success: false, message: e.message };
     }
 }
 
 // 🟢 ACTIVAR
 export async function activateClient(client) {
-    if (!client.ip || client.ip === '0.0.0.0') {
-        console.error("❌ Cliente sin IP:", client);
-        return {
-            success: false,
-            message: "El cliente no tiene IP válida"
-        };
+    if (!client.ip || client.ip === "0.0.0.0") {
+        return { success: false, message: "Cliente sin IP válida" };
     }
 
-    const config = getMikrotikConfig();
-    const fullName = `${client.nombre} ${client.apellido || ''}`.trim();
-
     try {
-        console.log(`📡 Activando: ${fullName} (${client.ip})`);
+        const fullName = `${client.nombre} ${client.apellido || ''}`.trim();
+        console.log("📡 Activando:", fullName);
 
-        const response = await withTimeout((signal) =>
-            fetch(`${API_URL}/api/queue/disable`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                signal,
-                body: JSON.stringify({
-                    config,
-                    ip: client.ip,
-                    clientName: fullName
-                })
+        return await fetchWithTimeout(`${API_URL}/api/queue/disable`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                config: getMikrotikConfig(),
+                ip: client.ip,
+                clientName: fullName
             })
-        );
+        });
 
-        if (!response.ok) {
-            const text = await response.text();
-            throw new Error(`HTTP ${response.status} - ${text}`);
-        }
-
-        const text = await response.text();
-        try {
-            return JSON.parse(text);
-        } catch {
-            console.error("❌ RESPUESTA NO JSON:", text);
-            throw new Error("Backend inválido");
-        }
-
-    } catch (error) {
-        console.error("❌ ERROR ACTIVAR:", error.message);
-        return { success: false, message: error.message };
+    } catch (e) {
+        console.error("❌ ERROR ACTIVAR:", e.message);
+        return { success: false, message: e.message };
     }
 }
 
 /**
- * TEST DE CONEXIÓN AL CLOUD
+ * TEST DE CONEXIÓN
  */
 export async function testMikrotikConnection(config) {
     try {
-        // Si el host viene vacío en el test, usamos el DNS por defecto
         const testConfig = {
             ...config,
             host: config.host || '181.209.118.162'
         };
-        const res = await withTimeout((signal) => fetch(`${API_URL}/api/mikrotik/test`, {
+        return await fetchWithTimeout(`${API_URL}/api/mikrotik/test`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            signal,
             body: JSON.stringify(testConfig)
-        }));
-        const text = await res.text();
-        try {
-            return JSON.parse(text);
-        } catch {
-            console.error("❌ RESPUESTA NO JSON:", text);
-            throw new Error("El backend no devolvió JSON válido");
-        }
+        });
     } catch (e) {
-        return { success: false, message: e.message || 'Error: El DNS no resolvió o el puerto está cerrado.' };
+        return { success: false, message: e.message };
     }
 }
 
-// Exportamos la función de estado para el Dashboard
+/**
+ * STATUS DEL SISTEMA
+ */
 export async function getMikrotikStatus(config) {
     try {
-        const response = await fetch(`${API_URL}/api/mikrotik/status`, {
+        return await fetchWithTimeout(`${API_URL}/api/mikrotik/status`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -174,34 +136,24 @@ export async function getMikrotikStatus(config) {
                 password: config.password || 'InterRed2026'
             })
         });
-        const text = await response.text();
-        try {
-            return JSON.parse(text);
-        } catch {
-            console.error("❌ RESPUESTA NO JSON:", text);
-            throw new Error("El backend no devolvió JSON válido");
-        }
     } catch (error) {
         return { success: false, message: error.message };
     }
 }
 
+/**
+ * REINICIAR ROUTER
+ */
 export async function rebootMikrotik(config) {
     try {
-        const res = await withTimeout((signal) => fetch(`${API_URL}/api/mikrotik/reboot`, {
+        return await fetchWithTimeout(`${API_URL}/api/mikrotik/reboot`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            signal,
             body: JSON.stringify({ ...config, host: config.host || '181.209.118.162' })
-        }));
-        const text = await res.text();
-        try {
-            return JSON.parse(text);
-        } catch {
-            console.error("❌ RESPUESTA NO JSON:", text);
-            throw new Error("El backend no devolvió JSON válido");
-        }
+        });
     } catch (e) {
+        // A veces el router se cae antes de responder al comando de reboot, 
+        // así que solemos retornar success por defecto si se envió bien.
         return { success: true, message: 'Reinicio enviado.' };
     }
 }
