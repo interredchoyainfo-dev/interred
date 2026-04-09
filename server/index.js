@@ -158,26 +158,48 @@ app.post('/api/mikrotik/update-queue', async (req, res) => {
 
 // 🔴 REDUCIR
 app.post('/api/queue/enable', async (req, res) => {
-    const { config, ip, clientName } = req.body;
+    try {
+        const { config, ip, clientName } = req.body;
 
-    if (!config || !ip) {
-        return res.status(400).json({ success: false, message: 'Faltan datos' });
+        if (!config || !ip) {
+            return res.status(400).json({
+                success: false,
+                message: 'Faltan datos (config/ip)'
+            });
+        }
+
+        const result = await reduceClient(config, ip, clientName);
+        res.json(result);
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
-
-    const result = await reduceClient(config, ip, clientName);
-    res.json(result);
 });
 
 // 🟢 ACTIVAR
 app.post('/api/queue/disable', async (req, res) => {
-    const { config, ip, clientName } = req.body;
+    try {
+        const { config, ip, clientName } = req.body;
 
-    if (!config || !ip) {
-        return res.status(400).json({ success: false, message: 'Faltan datos' });
+        if (!config || !ip) {
+            return res.status(400).json({
+                success: false,
+                message: 'Faltan datos (config/ip)'
+            });
+        }
+
+        const result = await activateClient(config, ip, clientName);
+        res.json(result);
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
-
-    const result = await activateClient(config, ip, clientName);
-    res.json(result);
 });
 
 
