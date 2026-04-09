@@ -8,43 +8,38 @@ function isValidIP(ip) {
  * Connects to MikroTik and executes a callback with the API handle.
  */
 async function withMikrotik(config, callback) {
-    const port = parseInt(config.port) || 8728;
-
     const api = new RouterOSClient({
         host: config.host,
-        port: port,
+        port: 8728,
         user: config.user,
         password: config.password,
         keepalive: false
     });
 
     try {
-        console.log(`📡 Conectando a MikroTik ${config.host}:${port}`);
         const client = await api.connect();
         const result = await callback(client);
         await api.close();
         return result;
     } catch (error) {
-        console.error("❌ Error MikroTik:", error.message);
         try { await api.close(); } catch {}
         return { success: false, message: error.message };
     }
 }
 
-// 🔴 REDUCIR CLIENTE
-export async function reduceClient(config, ip, clientName = 'Cliente') {
+// 🔴 REDUCIR
+export async function reduceClient(config, ip, clientName = 'CLIENTE') {
     if (!isValidIP(ip)) return { success: false, message: 'IP inválida' };
 
     return withMikrotik(config, async (api) => {
         const queue = api.menu('/queue/simple');
-        const target = ip.includes('/') ? ip : `${ip}/32`;
+        const target = `${ip}/32`;
 
         let q = await queue.where('target', target).get();
 
         if (!q || q.length === 0) {
-            // CREAR SI NO EXISTE
             await queue.add({
-                name: clientName,
+                name: clientName.toUpperCase(),
                 target: target,
                 "max-limit": "1k/1k",
                 disabled: "no",
@@ -54,7 +49,6 @@ export async function reduceClient(config, ip, clientName = 'Cliente') {
             return { success: true, message: "Cliente creado y reducido" };
         }
 
-        // MODIFICAR SI EXISTE
         await queue.set({
             ".id": q[0][".id"],
             "max-limit": "1k/1k",
@@ -62,20 +56,20 @@ export async function reduceClient(config, ip, clientName = 'Cliente') {
             comment: `InterRed | LIMITADO | ${clientName}`
         });
 
-        return { success: true, message: "Cliente reducido correctamente" };
+        return { success: true, message: "Cliente reducido" };
     });
 }
 
 // Alias para compatibilidad
 export const suspendClient = reduceClient;
 
-// 🟢 ACTIVAR CLIENTE
+// 🟢 ACTIVAR
 export async function activateClient(config, ip) {
     if (!isValidIP(ip)) return { success: false, message: 'IP inválida' };
 
     return withMikrotik(config, async (api) => {
         const queue = api.menu('/queue/simple');
-        const target = ip.includes('/') ? ip : `${ip}/32`;
+        const target = `${ip}/32`;
 
         let q = await queue.where('target', target).get();
 
@@ -87,10 +81,10 @@ export async function activateClient(config, ip) {
             ".id": q[0][".id"],
             "max-limit": "0/0",
             disabled: "no",
-            comment: `InterRed | ACTIVO`
+            comment: "InterRed | ACTIVO"
         });
 
-        return { success: true, message: "Cliente activado correctamente" };
+        return { success: true, message: "Cliente activado" };
     });
 }
 

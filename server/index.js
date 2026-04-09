@@ -156,16 +156,26 @@ app.post('/api/mikrotik/update-queue', async (req, res) => {
     }
 });
 
-// REDUCIR
+// 🔴 REDUCIR
 app.post('/api/queue/enable', async (req, res) => {
     const { config, ip, clientName } = req.body;
+
+    if (!config || !ip) {
+        return res.status(400).json({ success: false, message: 'Faltan datos' });
+    }
+
     const result = await reduceClient(config, ip, clientName);
     res.json(result);
 });
 
-// ACTIVAR
+// 🟢 ACTIVAR
 app.post('/api/queue/disable', async (req, res) => {
     const { config, ip } = req.body;
+
+    if (!config || !ip) {
+        return res.status(400).json({ success: false, message: 'Faltan datos' });
+    }
+
     const result = await activateClient(config, ip);
     res.json(result);
 });
