@@ -137,20 +137,25 @@ export async function getSystemStatus(config) {
         const resource = await api.menu('/system/resource').get();
         const interfaces = await api.menu('/interface').get();
         
+        console.log('[MIKROTIK] Resource:', resource?.[0]);
+        if (interfaces && interfaces.length > 0) {
+            console.log('[MIKROTIK] First Interface Sample:', interfaces[0]);
+        }
+        
         return {
             success: true,
             identity: identity?.[0]?.name || 'MikroTik',
-            cpuLoad: resource?.[0]?.['cpu-load'] || '0',
-            freeMemory: resource?.[0]?.['free-memory'] || '0',
-            totalMemory: resource?.[0]?.['total-memory'] || '0',
+            cpuLoad: resource?.[0]?.['cpu-load'] !== undefined ? resource[0]['cpu-load'].toString() : '0',
+            freeMemory: resource?.[0]?.['free-memory'] !== undefined ? resource[0]['free-memory'].toString() : '0',
+            totalMemory: resource?.[0]?.['total-memory'] !== undefined ? resource[0]['total-memory'].toString() : '0',
             uptime: resource?.[0]?.uptime || '0s',
             version: resource?.[0]?.version || '',
             interfaces: (interfaces || []).map(i => ({
                 name: i.name,
                 type: i.type,
                 disabled: i.disabled === 'true' || i.disabled === true,
-                rxByte: i['rx-byte'] || '0',
-                txByte: i['tx-byte'] || '0',
+                rxByte: i['rx-byte'] || i['rx-bytes'] || i['rx-byte-64'] || '0',
+                txByte: i['tx-byte'] || i['tx-bytes'] || i['tx-byte-64'] || '0',
                 running: i.running === 'true' || i.running === true
             })).filter(i => !i.disabled)
         };

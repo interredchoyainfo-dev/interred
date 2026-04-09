@@ -2360,13 +2360,15 @@ const App = {
                         const txBytes = parseInt(i.txByte || 0);
                         
                         // Deltas for Mbps
-                        const prevRx = this.mkPrevRxBytes?.[i.name] || 0;
-                        const prevTx = this.mkPrevTxBytes?.[i.name] || 0;
+                        const prevRx = this.mkPrevRxBytes[i.name];
+                        const prevTx = this.mkPrevTxBytes[i.name];
                         
                         let rxMbps = 0, txMbps = 0;
-                        if (prevRx > 0 && elapsed > 0) {
+                        if (prevRx !== undefined && elapsed > 0) {
                             const deltaRx = Math.max(0, rxBytes - prevRx);
                             const deltaTx = Math.max(0, txBytes - prevTx);
+                            
+                            // Bits per second to Mbps ( * 8 bits / 1,000,000)
                             rxMbps = (deltaRx * 8 / 1000000) / elapsed;
                             txMbps = (deltaTx * 8 / 1000000) / elapsed;
                             
