@@ -14,7 +14,8 @@ async function withMikrotik(config, callback) {
         port: port,
         user: config.user,
         password: config.password,
-        keepalive: false
+        keepalive: true,
+        timeout: 30
     });
 
     try {
