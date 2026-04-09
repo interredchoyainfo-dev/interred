@@ -3,13 +3,28 @@ import { API_URL } from './config.js';
 
 const TIMEOUT = 30000;
 
-function withTimeout(promise) {
-    return Promise.race([
-        promise,
-        new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Timeout MikroTik")), TIMEOUT)
-        )
-    ]);
+async function withTimeout(fetchPromise) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT);
+
+    try {
+        const response = await fetchPromise(controller.signal);
+
+        // 🔴 VALIDACIÓN FUERTE
+        if (!(response instanceof Response)) {
+            throw new Error("La respuesta no es válida (no es Response)");
+        }
+
+        return response;
+
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            throw new Error("Timeout MikroTik (30s)");
+        }
+        throw error;
+    } finally {
+        clearTimeout(timeoutId);
+    }
 }
 
 function getMikrotikConfig() {
@@ -29,9 +44,10 @@ export async function reduceClient(client) {
     try {
         console.log(`📡 Reduciendo: ${client.nombre}`);
 
-        const response = await withTimeout(fetch(`${API_URL}/api/queue/enable`, {
+        const response = await withTimeout((signal) => fetch(`${API_URL}/api/queue/enable`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            signal,
             body: JSON.stringify({
                 config,
                 ip: client.ip,
@@ -45,8 +61,13 @@ export async function reduceClient(client) {
             throw new Error(`HTTP ${response.status} - ${text}`);
         }
 
-        const data = await response.json();
-        return data;
+        const text = await response.text();
+        try {
+            return JSON.parse(text);
+        } catch {
+            console.error("❌ RESPUESTA NO JSON:", text);
+            throw new Error("El backend no devolvió JSON válido");
+        }
 
     } catch (error) {
         console.error("❌ ERROR REDUCIR:", error.message);
@@ -61,9 +82,10 @@ export async function activateClient(client) {
     try {
         console.log(`📡 Activando: ${client.nombre}`);
 
-        const response = await withTimeout(fetch(`${API_URL}/api/queue/disable`, {
+        const response = await withTimeout((signal) => fetch(`${API_URL}/api/queue/disable`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            signal,
             body: JSON.stringify({
                 config,
                 ip: client.ip
@@ -76,8 +98,13 @@ export async function activateClient(client) {
             throw new Error(`HTTP ${response.status} - ${text}`);
         }
 
-        const data = await response.json();
-        return data;
+        const text = await response.text();
+        try {
+            return JSON.parse(text);
+        } catch {
+            console.error("❌ RESPUESTA NO JSON:", text);
+            throw new Error("El backend no devolvió JSON válido");
+        }
 
     } catch (error) {
         console.error("❌ ERROR ACTIVAR:", error.message);
@@ -95,14 +122,21 @@ export async function testMikrotikConnection(config) {
             ...config,
             host: config.host || '181.209.118.162'
         };
-        const res = await withTimeout(fetch(`${API_URL}/api/mikrotik/test`, {
+        const res = await withTimeout((signal) => fetch(`${API_URL}/api/mikrotik/test`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            signal,
             body: JSON.stringify(testConfig)
         }));
-        return await res.json();
+        const text = await res.text();
+        try {
+            return JSON.parse(text);
+        } catch {
+            console.error("❌ RESPUESTA NO JSON:", text);
+            throw new Error("El backend no devolvió JSON válido");
+        }
     } catch (e) {
-        return { success: false, message: 'Error: El DNS no resolvió o el puerto está cerrado.' };
+        return { success: false, message: e.message || 'Error: El DNS no resolvió o el puerto está cerrado.' };
     }
 }
 
@@ -119,7 +153,13 @@ export async function getMikrotikStatus(config) {
                 password: config.password || 'InterRed2026'
             })
         });
-        return await response.json();
+        const text = await response.text();
+        try {
+            return JSON.parse(text);
+        } catch {
+            console.error("❌ RESPUESTA NO JSON:", text);
+            throw new Error("El backend no devolvió JSON válido");
+        }
     } catch (error) {
         return { success: false, message: error.message };
     }
@@ -127,12 +167,19 @@ export async function getMikrotikStatus(config) {
 
 export async function rebootMikrotik(config) {
     try {
-        const res = await withTimeout(fetch(`${API_URL}/api/mikrotik/reboot`, {
+        const res = await withTimeout((signal) => fetch(`${API_URL}/api/mikrotik/reboot`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            signal,
             body: JSON.stringify({ ...config, host: config.host || '181.209.118.162' })
         }));
-        return await res.json();
+        const text = await res.text();
+        try {
+            return JSON.parse(text);
+        } catch {
+            console.error("❌ RESPUESTA NO JSON:", text);
+            throw new Error("El backend no devolvió JSON válido");
+        }
     } catch (e) {
         return { success: true, message: 'Reinicio enviado.' };
     }
