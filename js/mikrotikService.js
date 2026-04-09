@@ -26,33 +26,63 @@ function getMikrotikConfig() {
 export async function reduceClient(client) {
     const config = getMikrotikConfig();
 
-    const res = await withTimeout(fetch(`${API_URL}/api/queue/enable`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            config,
-            ip: client.ip,
-            clientName: `${client.nombre} ${client.apellido || ''}`.trim()
-        })
-    }));
+    try {
+        console.log(`📡 Reduciendo: ${client.nombre}`);
 
-    return await res.json();
+        const response = await withTimeout(fetch(`${API_URL}/api/queue/enable`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                config,
+                ip: client.ip,
+                clientName: client.nombre
+            })
+        }));
+
+        // 🔴 VALIDACIÓN CLAVE
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`HTTP ${response.status} - ${text}`);
+        }
+
+        const data = await response.json();
+        return data;
+
+    } catch (error) {
+        console.error("❌ ERROR REDUCIR:", error.message);
+        return { success: false, message: error.message };
+    }
 }
 
 // 🟢 ACTIVAR
 export async function activateClient(client) {
     const config = getMikrotikConfig();
 
-    const res = await withTimeout(fetch(`${API_URL}/api/queue/disable`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            config,
-            ip: client.ip
-        })
-    }));
+    try {
+        console.log(`📡 Activando: ${client.nombre}`);
 
-    return await res.json();
+        const response = await withTimeout(fetch(`${API_URL}/api/queue/disable`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                config,
+                ip: client.ip
+            })
+        }));
+
+        // 🔴 VALIDACIÓN CLAVE
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`HTTP ${response.status} - ${text}`);
+        }
+
+        const data = await response.json();
+        return data;
+
+    } catch (error) {
+        console.error("❌ ERROR ACTIVAR:", error.message);
+        return { success: false, message: error.message };
+    }
 }
 
 /**
