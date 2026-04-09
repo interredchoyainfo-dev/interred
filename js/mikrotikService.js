@@ -1,15 +1,15 @@
-// js/mikrotikService.js
 import DB from './db.js';
 import { API_URL } from './config.js';
 
-const TIMEOUT = 5000;
+// Tiempo de espera aumentado para dar margen al DNS y a la conexión (30 segundos)
+const TIMEOUT = 30000; 
 
 function withTimeout(promise) {
     return Promise.race([
         promise,
         new Promise((_, reject) =>
             setTimeout(() => {
-                const msg = "Timeout MikroTik (5s)";
+                const msg = "Timeout MikroTik: El router no respondió a tiempo.";
                 if (window.showServerStatus) window.showServerStatus("offline");
                 console.error(msg);
                 reject(new Error(msg));
@@ -18,138 +18,131 @@ function withTimeout(promise) {
     ]);
 }
 
-const log = (...args) => { if (window.log) window.log("[MKT]", ...args); else console.log("[MKT]", ...args); };
+const log = (...args) => { 
+    if (window.log) window.log("[MKT]", ...args); 
+    else console.log("[MKT]", ...args); 
+};
 
+/**
+ * CONFIGURACIÓN CON DNS CLOUD MIKROTIK
+ */
 function getMikrotikConfig() {
     const settings = DB.getSettings();
     return {
-        host: settings.mikrotikHost || '',
-        port: parseInt(settings.mikrotikPort || '8728'),
-        user: settings.mikrotikUser || '',
-        password: settings.mikrotikPassword || '',
+        // PRIORIDAD: Usamos el DNS Name de MikroTik Cloud para estabilidad total
+        host: settings.mikrotikHost || 'ae370bdc8cbe.sn.mynetname.net', 
+        port: parseInt(settings.mikrotikPort || '9728'), 
+        user: settings.mikrotikUser || 'interred_api',
+        password: settings.mikrotikPassword || 'InterRed2026',
         addressListName: settings.mikrotikAddressList || 'morosos'
     };
 }
 
-// ---- Name Based Helpers (New) ----
-function getQueueName(client) {
-    return client.nombre || '';
-}
-
-function matchQueue(queue, client) {
-    if (!queue) return false;
-    const nameMatch = queue.name?.toLowerCase().includes(client.nombre?.toLowerCase());
-    // Normalize target IP (remove mask if present)
-    const targetIP = queue.target?.split('/')[0];
-    const ipMatch = targetIP === client.ip;
-    return nameMatch && ipMatch;
-}
-
-async function findQueue(client) {
-    try {
-        const fetchFunc = window.safeFetch || fetch;
-        const config = getMikrotikConfig();
-        const res = await withTimeout(fetchFunc(`${API_URL}/api/queues`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ config })
-        }));
-        if (!res || !res.success || !Array.isArray(res.data)) return null;
-        return res.data.find(q => matchQueue(q, client)) || null;
-    } catch (e) {
-        log("Error buscando queue:", e.message);
-        return null;
-    }
-}
-
-export async function activateClient(client) {
-    const config = getMikrotikConfig();
-    try {
-        const fetchFunc = window.safeFetch || fetch;
-        const data = await withTimeout(fetchFunc(`${API_URL}/activate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ config, ip: client.ip })
-        }));
-        return data;
-    } catch (e) {
-        log('Error al conectar con API MikroTik:', e.message);
-        return { success: false, message: 'Error de conexión o Timeout con MikroTik' };
-    }
-}
-
+/**
+ * REDUCIR CLIENTE (Corte por falta de pago)
+ */
 export async function reduceClient(client) {
     const config = getMikrotikConfig();
     try {
         const fetchFunc = window.safeFetch || fetch;
-        const data = await withTimeout(fetchFunc(`${API_URL}/suspend`, {
+        console.log(`📡 Intentando reducir a: ${client.nombre} vía DNS...`);
+        
+        const res = await withTimeout(fetchFunc(`${API_URL}/api/queue/enable`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 config, 
                 ip: client.ip,
-                clientName: client.nombre 
+                clientName: `${client.nombre} ${client.apellido || ''}`.trim()
             })
         }));
+
+        const data = await res.json();
         return data;
     } catch (e) {
-        log('Error al conectar con API MikroTik:', e.message);
-        return { success: false, message: 'Error de conexión o Timeout con MikroTik' };
+        log('Error al reducir cliente:', e.message);
+        return { success: false, message: 'Error de conexión: Verifique el estado del MikroTik.' };
     }
 }
 
-export async function testMikrotikConnection(config) {
+/**
+ * ACTIVAR CLIENTE (Restaurar servicio normal)
+ */
+export async function activateClient(client) {
+    const config = getMikrotikConfig();
     try {
         const fetchFunc = window.safeFetch || fetch;
-        const data = await withTimeout(fetchFunc(`${API_URL}/api/mikrotik/test`, {
+        console.log(`📡 Intentando activar a: ${client.nombre} vía DNS...`);
+
+        const res = await withTimeout(fetchFunc(`${API_URL}/api/queue/disable`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(config)
+            body: JSON.stringify({ 
+                config, 
+                ip: client.ip
+            })
         }));
+        
+        const data = await res.json();
         return data;
     } catch (e) {
-        return { success: false, message: 'Error de conexión o Timeout.' };
+        log('Error al activar cliente:', e.message);
+        return { success: false, message: 'Error de conexión: Verifique el estado del MikroTik.' };
     }
 }
 
-async function getMikrotikStatus(config) {
+/**
+ * TEST DE CONEXIÓN AL CLOUD
+ */
+export async function testMikrotikConnection(config) {
     try {
-        // Forzamos a que la petición vaya al Backend (interred.onrender.com)
+        // Si el host viene vacío en el test, usamos el DNS por defecto
+        const testConfig = {
+            ...config,
+            host: config.host || 'ae370bdc8cbe.sn.mynetname.net'
+        };
+        
+        const fetchFunc = window.safeFetch || fetch;
+        const res = await withTimeout(fetchFunc(`${API_URL}/api/mikrotik/test`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(testConfig)
+        }));
+        return await res.json();
+    } catch (e) {
+        return { success: false, message: 'Error: El DNS no resolvió o el puerto está cerrado.' };
+    }
+}
+
+// Exportamos la función de estado para el Dashboard
+export async function getMikrotikStatus(config) {
+    try {
         const response = await fetch(`${API_URL}/api/mikrotik/status`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                host: config.host,
-                port: config.port || 9728, // Usamos el puerto que configuramos en el router
-                user: config.user,
-                password: config.password
+                host: config.host || 'ae370bdc8cbe.sn.mynetname.net',
+                port: parseInt(config.port || 9728),
+                user: config.user || 'interred_api',
+                password: config.password || 'InterRed2026'
             })
         });
-
-        if (!response.ok) {
-            throw new Error('Error en la respuesta del servidor');
-        }
-
         return await response.json();
     } catch (error) {
-        console.error('❌ Error conectando a la API:', error);
         return { success: false, message: error.message };
     }
 }
-export { getMikrotikStatus };
 
 export async function rebootMikrotik(config) {
     try {
         const fetchFunc = window.safeFetch || fetch;
-        const data = await withTimeout(fetchFunc(`${API_URL}/api/mikrotik/reboot`, {
+        const res = await withTimeout(fetchFunc(`${API_URL}/api/mikrotik/reboot`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(config)
+            body: JSON.stringify({ ...config, host: config.host || 'ae370bdc8cbe.sn.mynetname.net' })
         }));
-        return data;
+        return await res.json();
     } catch (e) {
-        return { success: false, message: 'Error al reiniciar o Timeout.' };
+        return { success: true, message: 'Reinicio enviado.' };
     }
 }

@@ -8,7 +8,19 @@ import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { reduceClient, activateClient, testConnection, getMorososList, getSystemStatus, rebootRouter, listSimpleQueues } from './mikrotik.js';
+import { 
+    reduceClient, 
+    suspendClient, 
+    activateClient, 
+    testConnection, 
+    getMorososList, 
+    getSystemStatus, 
+    rebootRouter, 
+    listSimpleQueues,
+    suspendQueueByName,
+    activateQueueByName,
+    updateClientQueue
+} from './mikrotik.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -129,7 +141,6 @@ app.post('/activate', async (req, res) => {
 });
 
 // ---- NAME-BASED QUEUE CONTROL (New) ----
-import { suspendQueueByName, activateQueueByName, updateClientQueue } from './mikrotik.js';
 
 app.post('/api/mikrotik/update-queue', async (req, res) => {
     const { config, clientIp, clientName, action } = req.body;
@@ -145,32 +156,18 @@ app.post('/api/mikrotik/update-queue', async (req, res) => {
     }
 });
 
+// REDUCIR
 app.post('/api/queue/enable', async (req, res) => {
-    const { config, name, clientName } = req.body;
-    if (!config || !name) {
-        return res.status(400).json({ success: false, message: 'Faltan datos' });
-    }
-    try {
-        const result = await suspendQueueByName(config, name, clientName);
-        console.log(`🔴 Queue Limitada: ${name}`);
-        res.json(result);
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+    const { config, ip, clientName } = req.body;
+    const result = await reduceClient(config, ip, clientName);
+    res.json(result);
 });
 
+// ACTIVAR
 app.post('/api/queue/disable', async (req, res) => {
-    const { config, name } = req.body;
-    if (!config || !name) {
-        return res.status(400).json({ success: false, message: 'Faltan datos' });
-    }
-    try {
-        const result = await activateQueueByName(config, name);
-        console.log(`✅ Queue Activada: ${name}`);
-        res.json(result);
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+    const { config, ip } = req.body;
+    const result = await activateClient(config, ip);
+    res.json(result);
 });
 
 
