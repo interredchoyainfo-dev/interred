@@ -27,43 +27,63 @@ async function withMikrotik(config, callback) {
     }
 }
 
+/**
+ * Super Robust Finder for Queues
+ */
+async function getQueueByAnyMeans(queueMenu, ip, name) {
+    const target1 = ip;
+    const target2 = ip.includes('/') ? ip : `${ip}/32`;
+    const nameUpper = name.toUpperCase();
+    
+    console.log(`🔍 Buscando queue: IP=${target1}, Name=${name}`);
+
+    // 1. Intento por filtros API (Rápido)
+    let q = await queueMenu.where('target', target1).get();
+    if (!q || q.length === 0) q = await queueMenu.where('target', target2).get();
+    if (!q || q.length === 0) q = await queueMenu.where('name', name).get();
+    if (!q || q.length === 0) q = await queueMenu.where('name', nameUpper).get();
+
+    if (q && q.length > 0) return q[0];
+
+    // 2. Intento por Búsqueda Manual (Fuerza Bruta)
+    console.log("⚠️ Búsqueda por filtro falló. Iniciando escaneo manual...");
+    const all = await queueMenu.get();
+    const found = all.find(item => {
+        const t = item.target || '';
+        const n = item.name || '';
+        return t.includes(target1) || n === name || n === nameUpper;
+    });
+
+    return found || null;
+}
+
 // 🔴 REDUCIR
 export async function reduceClient(config, ip, clientName = "Cliente") {
     if (!isValidIP(ip.split('/')[0])) return { success: false, message: 'IP inválida' };
 
     return withMikrotik(config, async (api) => {
-        const queue = api.menu('/queue/simple');
-        const target1 = ip;
-        const target2 = ip + "/32";
+        const queueMenu = api.menu('/queue/simple');
+        const q = await getQueueByAnyMeans(queueMenu, ip, clientName);
 
-        let q = await queue.where('target', target1).get();
-
-        if (!q || q.length === 0) {
-            q = await queue.where('target', target2).get();
-        }
-
-        if (!q || q.length === 0) {
-            q = await queue.where('name', clientName.toUpperCase()).get();
-        }
-
-        if (q && q.length > 0) {
-            await queue.set({
-                ".id": q[0][".id"],
+        if (q) {
+            console.log(`✅ Queue encontrada: ${q.name}. Aplicando reducción...`);
+            await queueMenu.set({
+                ".id": q[".id"],
                 "max-limit": "1k/1k",
                 disabled: "no",
-                comment: `InterRed | LIMITADO | ${clientName}`
+                comment: `InterRed | LIMITADO | ${clientName} | ${new Date().toLocaleString()}`
             });
-
-            return { success: true, message: "Cliente reducido" };
+            return { success: true, message: "Cliente reducido con éxito" };
         }
 
         // SI NO EXISTE -> CREAR
-        await queue.add({
+        console.log(`➕ No se encontró queue. Creando nueva para: ${clientName}`);
+        await queueMenu.add({
             name: clientName.toUpperCase(),
-            target: target2,
+            target: ip.includes('/') ? ip : `${ip}/32`,
             "max-limit": "1k/1k",
             disabled: "no",
-            comment: `InterRed | LIMITADO | ${clientName}`
+            comment: `InterRed | LIMITADO | ${clientName} | Creado ${new Date().toLocaleString()}`
         });
 
         return { success: true, message: "Cliente creado y reducido" };
@@ -75,32 +95,22 @@ export async function activateClient(config, ip, clientName = "Cliente") {
     if (!isValidIP(ip.split('/')[0])) return { success: false, message: 'IP inválida' };
 
     return withMikrotik(config, async (api) => {
-        const queue = api.menu('/queue/simple');
-        const target1 = ip;
-        const target2 = ip + "/32";
+        const queueMenu = api.menu('/queue/simple');
+        const q = await getQueueByAnyMeans(queueMenu, ip, clientName);
 
-        let q = await queue.where('target', target1).get();
-
-        if (!q || q.length === 0) {
-            q = await queue.where('target', target2).get();
-        }
-
-        if (!q || q.length === 0) {
-            q = await queue.where('name', clientName.toUpperCase()).get();
-        }
-
-        if (q && q.length > 0) {
-            await queue.set({
-                ".id": q[0][".id"],
-                "max-limit": "0/0",
+        if (q) {
+            console.log(`✅ Queue encontrada: ${q.name}. Activando servicio...`);
+            await queueMenu.set({
+                ".id": q[".id"],
+                "max-limit": "0/0", // Ilimitado
                 disabled: "no",
-                comment: `InterRed | ACTIVO | ${new Date().toLocaleDateString()}`
+                comment: `InterRed | ACTIVO | ${new Date().toLocaleString()}`
             });
 
-            return { success: true, message: "Cliente activado" };
+            return { success: true, message: "Cliente activado con éxito" };
         }
 
-        return { success: false, message: "No se encontró la cola para activar" };
+        return { success: false, message: "No se encontró la cola del cliente en MikroTik" };
     });
 }
 
