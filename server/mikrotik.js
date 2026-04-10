@@ -14,8 +14,9 @@ async function withMikrotik(config, callback) {
         user: config.user,
         password: config.password,
         keepalive: false,
-        tls: true,
-        rejectUnauthorized: false
+        tls: {
+            rejectUnauthorized: false
+        }
     });
 
     try {
