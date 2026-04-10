@@ -30,11 +30,10 @@ async function withMikrotik(config, callback) {
     }
 }
 
-// 🔍 FIX: Buscar y borrar SOLO la queue exacta del cliente
-async function deleteClientQueue(queueMenu, ip, name) {
+// 🔍 FIX: Buscar y borrar SOLO queues por IP EXACTA
+async function deleteClientQueue(queueMenu, ip) {
     const target1 = ip.trim();
     const target2 = target1.includes('/') ? target1 : `${target1}/32`;
-    const nameUpper = (name || '').trim().toUpperCase();
 
     let queues = [];
     try {
@@ -46,25 +45,22 @@ async function deleteClientQueue(queueMenu, ip, name) {
 
     if (!queues || queues.length === 0) return;
 
-    const match = queues.find(q => {
+    const matches = queues.filter(q => {
         if (q.dynamic === 'true' || q.dynamic === true) return false;
 
         const qTarget = (q.target || '').trim();
-        const qName = (q.name || '').trim().toUpperCase();
 
-        return (
-            qName === nameUpper ||
-            qTarget === target1 ||
-            qTarget === target2
-        );
+        // 🔥 SOLO POR IP EXACTA
+        return (qTarget === target1 || qTarget === target2);
     });
 
-    if (match) {
-        console.log(`🗑️ Eliminando SOLO queue del cliente: ${match.name}`);
+    for (const q of matches) {
+        const qTarget = (q.target || '').trim();
+        console.log(`🗑️ Eliminando queue por IP: ${q.name} (${qTarget})`);
         try {
-            await queueMenu.remove(match['.id']);
+            await queueMenu.remove(q['.id']);
         } catch (e) {
-            console.warn(`⚠️ Error borrando queue: ${e.message}`);
+            console.warn(`⚠️ Error borrando queue ${q['.id']}: ${e.message}`);
         }
     }
 }
@@ -76,8 +72,8 @@ export async function reduceClient(config, ip, clientName = "Cliente") {
     return withMikrotik(config, async (api) => {
         const queueMenu = api.menu('/queue/simple');
 
-        // 🔥 SOLO BORRA ESTE CLIENTE
-        await deleteClientQueue(queueMenu, ip, clientName);
+        // 🔥 SOLO BORRA POR IP
+        await deleteClientQueue(queueMenu, ip);
 
         console.log(`➕ Creando queue LIMITADA: ${clientName}`);
         try {
@@ -104,8 +100,8 @@ export async function activateClient(config, ip, clientName = "Cliente") {
     return withMikrotik(config, async (api) => {
         const queueMenu = api.menu('/queue/simple');
 
-        // 🔥 SOLO BORRA ESTE CLIENTE
-        await deleteClientQueue(queueMenu, ip, clientName);
+        // 🔥 SOLO BORRA POR IP
+        await deleteClientQueue(queueMenu, ip);
 
         // ATENCIÓN: Se crea con disabled: "yes" y sin max-limit para liberar el tráfico!
         console.log(`➕ Creando queue LIBERADA: ${clientName}`);
