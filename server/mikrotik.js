@@ -30,105 +30,92 @@ async function withMikrotik(config, callback) {
     }
 }
 
-// 🔍 FIX: Buscar y borrar SOLO queues administradas por el sistema
-async function deleteClientQueue(queueMenu, ip) {
+// 🔍 Función para ubicar la queue exacta del cliente por IP
+async function findExactQueueByIp(queueMenu, ip) {
     const cleanIP = ip.split('/')[0].trim();
     const targetExact = `${cleanIP}/32`;
 
     let queues = [];
     try {
         queues = await queueMenu.get();
-    } catch (err) {
-        console.error("❌ Error fetching all queues:", err.message);
-        return;
-    }
+    } catch { return null; }
 
-    if (!queues || queues.length === 0) return;
+    if (!queues || queues.length === 0) return null;
 
-    const matches = queues.filter(q => {
+    return queues.find(q => {
         if (q.dynamic === 'true' || q.dynamic === true) return false;
 
         let qTarget = (q.target || '').trim();
-
-        // 🔥 NORMALIZAR TARGET
-        if (!qTarget.includes('/')) {
-            qTarget = `${qTarget}/32`;
-        }
-
-        // ❌ IGNORAR cosas raras (rangos o subredes)
-        if (qTarget.includes('-')) return false;
-
-        // 🛡️ IGNORAR colas no creadas por nosotros
-        if (!q.comment?.includes(`SYS:INTERRED:${cleanIP}`)) return false;
+        if (!qTarget.includes('/')) qTarget = `${qTarget}/32`;
 
         return qTarget === targetExact;
     });
+}
 
-    for (const q of matches) {
-        console.log(`🗑️ Eliminando queue exacta: ${q.name} (${q.target})`);
+// 🛡️ Bucle de seguridad para Forzar Estado de la Cola
+async function enforceQueueState(api, ip, clientName, params, isReducing) {
+    const queueMenu = api.menu('/queue/simple');
+    const cleanIP = ip.split('/')[0].trim();
+    const targetExact = `${cleanIP}/32`;
+    
+    // 1. Buscamos el estado actual
+    const existing = await findExactQueueByIp(queueMenu, cleanIP);
+
+    const fullParams = {
+        name: clientName.toUpperCase().trim(),
+        target: targetExact,
+        comment: `SYS:INTERRED:${cleanIP} | ${isReducing ? 'LIMITADO' : 'ACTIVO'} | ${clientName} | ${new Date().toLocaleDateString()}`,
+        ...params
+    };
+
+    if (existing && existing['.id']) {
+        console.log(`✏️ Intentando actualizar queue en caliente ID: ${existing['.id']}`);
         try {
-            await queueMenu.remove(q['.id']);
-        } catch (e) {
-            console.warn(`⚠️ Error borrando queue ${q['.id']}: ${e.message}`);
+            // Intentamos in-place mutation (lo más sano para el router)
+            // Forma 1 de enviar params a MikroTik JS API:
+            await queueMenu.set({ ".id": existing['.id'], ...fullParams });
+            return { success: true, message: `Cliente ${isReducing ? 'reducido' : 'activado'} (Actualizado)` };
+        } catch (err) {
+            console.warn(`⚠️ Falló el in-place set (${err.message}). Cambiando a borrado duro...`);
+            // Si el 'set' falla (ej. "no such item"), procedemos a borrar y recrear
+            try { await queueMenu.remove(existing['.id']); } catch(e) {}
         }
+    }
+
+    // 2. Esperamos medio segundo para evitar el bug de MikroTik "already have such name" (Race condition)
+    await new Promise(r => setTimeout(r, 500));
+
+    // 3. Recreamos la cola limpia
+    console.log(`➕ Recreando queue desde cero: ${fullParams.name}`);
+    try {
+        await queueMenu.add(fullParams);
+        return { success: true, message: `Cliente ${isReducing ? 'reducido' : 'activado'} (Recreado)` };
+    } catch (addErr) {
+        console.error("❌ Error definitivo en MikroTik:", addErr.message);
+        throw addErr;
     }
 }
 
-// 🔴 FIX: reduceClient (Borrando y recreando limpio)
+// 🔴 REDUCIR
 export async function reduceClient(config, ip, clientName = "Cliente") {
-    const cleanIP = ip.split('/')[0].trim();
-    if (!isValidIP(cleanIP)) return { success: false, message: 'IP inválida' };
+    if (!isValidIP(ip.split('/')[0])) return { success: false, message: 'IP inválida' };
 
     return withMikrotik(config, async (api) => {
-        const queueMenu = api.menu('/queue/simple');
-
-        // 🔥 SOLO BORRA POR IP (y si tiene nuestra firma)
-        await deleteClientQueue(queueMenu, ip);
-
-        console.log(`➕ Creando queue LIMITADA: ${clientName}`);
-        try {
-            await queueMenu.add({
-                name: clientName.toUpperCase().trim(),
-                target: `${cleanIP}/32`,
-                "max-limit": "1k/1k",
-                disabled: "no",
-                comment: `SYS:INTERRED:${cleanIP} | LIMITADO | ${clientName} | ${new Date().toLocaleDateString()}`
-            });
-        } catch (addErr) {
-            console.error("❌ Error fatal al crear queue limitada:", addErr.message);
-            throw addErr;
-        }
-
-        return { success: true, message: "Cliente reducido correctamente" };
+        return await enforceQueueState(api, ip, clientName, {
+            "max-limit": "1k/1k",
+            disabled: "no"
+        }, true);
     });
 }
 
-// 🟢 FIX: activateClient (Borrando y recreando DESACTIVADO para liberar velocidad)
+// 🟢 ACTIVAR
 export async function activateClient(config, ip, clientName = "Cliente") {
-    const cleanIP = ip.split('/')[0].trim();
-    if (!isValidIP(cleanIP)) return { success: false, message: 'IP inválida' };
+    if (!isValidIP(ip.split('/')[0])) return { success: false, message: 'IP inválida' };
 
     return withMikrotik(config, async (api) => {
-        const queueMenu = api.menu('/queue/simple');
-
-        // 🔥 SOLO BORRA POR IP (y si tiene nuestra firma)
-        await deleteClientQueue(queueMenu, ip);
-
-        // ATENCIÓN: Se crea con disabled: "yes" y sin max-limit para liberar el tráfico!
-        console.log(`➕ Creando queue LIBERADA: ${clientName}`);
-        try {
-            await queueMenu.add({
-                name: clientName.toUpperCase().trim(),
-                target: `${cleanIP}/32`,
-                disabled: "yes", 
-                comment: `SYS:INTERRED:${cleanIP} | ACTIVO | ${clientName} | ${new Date().toLocaleDateString()}`
-            });
-        } catch (addErr) {
-            console.error("❌ Error fatal al crear queue activada:", addErr.message);
-            throw addErr;
-        }
-
-        return { success: true, message: "Cliente activado correctamente" };
+        return await enforceQueueState(api, ip, clientName, {
+            disabled: "yes"  // Al activar, NO mandamos max-limit para liberar el tubo entero
+        }, false);
     });
 }
 
