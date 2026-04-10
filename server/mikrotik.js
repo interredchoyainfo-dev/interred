@@ -99,8 +99,8 @@ export async function reduceClient(config, ip, clientName = "Cliente") {
                 });
                 return { success: true, message: "Cliente reducido con éxito" };
             } catch (err) {
-                console.warn(`⚠️ Error set ID: ${err.message}. Intentando recrear...`);
-                // If set fails with "no such item", it might be a stale ID. We continue to "SI NO EXISTE" logic.
+                console.error(`⚠️ Error set ID en reducción: ${err.message}`);
+                return { success: false, message: `Error actualizando queue: ${err.message}` };
             }
         }
 
@@ -129,21 +129,25 @@ export async function activateClient(config, ip, clientName = "Cliente") {
         const q = await getQueueByAnyMeans(queueMenu, ip, clientName);
 
         const params = {
-            "max-limit": "0/0", // Ilimitado
-            disabled: "no",
+            "max-limit": "unlimited/unlimited",
+            disabled: "yes", // Desactivamos la cola limitante para que el PPPoE/DHCP maneje la velocidad real
             comment: `InterRed | ACTIVO | ${new Date().toLocaleDateString()}`
         };
 
         if (q && q['.id']) {
             try {
                 console.log(`📡 Aplicando ACTIVACIÓN a ID: ${q['.id']} (${q.name})`);
+                
+                // En MikroTik, para ilimitado, a veces mandar "unlimited" es mejor que "0/0"
+                // Pero intentamos con 0/0 o si falla, lo logueamos
                 await queueMenu.set({
                     ".id": q['.id'],
                     ...params
                 });
                 return { success: true, message: "Cliente activado con éxito" };
             } catch (err) {
-                console.warn(`⚠️ Error set ID en activación: ${err.message}. Intentando recrear...`);
+                console.error(`⚠️ Error set ID en activación: ${err.message}`);
+                return { success: false, message: `Error actualizando queue: ${err.message}` };
             }
         }
 
