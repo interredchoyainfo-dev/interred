@@ -30,10 +30,10 @@ async function withMikrotik(config, callback) {
     }
 }
 
-// 🔍 FIX: Buscar y borrar SOLO queues por IP EXACTA
+// 🔍 FIX: Buscar y borrar SOLO queues administradas por el sistema
 async function deleteClientQueue(queueMenu, ip) {
-    const target1 = ip.trim();
-    const target2 = target1.includes('/') ? target1 : `${target1}/32`;
+    const cleanIP = ip.split('/')[0].trim();
+    const targetExact = `${cleanIP}/32`;
 
     let queues = [];
     try {
@@ -48,15 +48,24 @@ async function deleteClientQueue(queueMenu, ip) {
     const matches = queues.filter(q => {
         if (q.dynamic === 'true' || q.dynamic === true) return false;
 
-        const qTarget = (q.target || '').trim();
+        let qTarget = (q.target || '').trim();
 
-        // 🔥 SOLO POR IP EXACTA
-        return (qTarget === target1 || qTarget === target2);
+        // 🔥 NORMALIZAR TARGET
+        if (!qTarget.includes('/')) {
+            qTarget = `${qTarget}/32`;
+        }
+
+        // ❌ IGNORAR cosas raras (rangos o subredes)
+        if (qTarget.includes('-')) return false;
+
+        // 🛡️ IGNORAR colas no creadas por nosotros
+        if (!q.comment?.includes(`SYS:INTERRED:${cleanIP}`)) return false;
+
+        return qTarget === targetExact;
     });
 
     for (const q of matches) {
-        const qTarget = (q.target || '').trim();
-        console.log(`🗑️ Eliminando queue por IP: ${q.name} (${qTarget})`);
+        console.log(`🗑️ Eliminando queue exacta: ${q.name} (${q.target})`);
         try {
             await queueMenu.remove(q['.id']);
         } catch (e) {
@@ -67,22 +76,23 @@ async function deleteClientQueue(queueMenu, ip) {
 
 // 🔴 FIX: reduceClient (Borrando y recreando limpio)
 export async function reduceClient(config, ip, clientName = "Cliente") {
-    if (!isValidIP(ip.split('/')[0])) return { success: false, message: 'IP inválida' };
+    const cleanIP = ip.split('/')[0].trim();
+    if (!isValidIP(cleanIP)) return { success: false, message: 'IP inválida' };
 
     return withMikrotik(config, async (api) => {
         const queueMenu = api.menu('/queue/simple');
 
-        // 🔥 SOLO BORRA POR IP
+        // 🔥 SOLO BORRA POR IP (y si tiene nuestra firma)
         await deleteClientQueue(queueMenu, ip);
 
         console.log(`➕ Creando queue LIMITADA: ${clientName}`);
         try {
             await queueMenu.add({
                 name: clientName.toUpperCase().trim(),
-                target: ip.includes('/') ? ip.trim() : `${ip.trim()}/32`,
+                target: `${cleanIP}/32`,
                 "max-limit": "1k/1k",
                 disabled: "no",
-                comment: `InterRed | LIMITADO | ${clientName} | ${new Date().toLocaleDateString()}`
+                comment: `SYS:INTERRED:${cleanIP} | LIMITADO | ${clientName} | ${new Date().toLocaleDateString()}`
             });
         } catch (addErr) {
             console.error("❌ Error fatal al crear queue limitada:", addErr.message);
@@ -95,12 +105,13 @@ export async function reduceClient(config, ip, clientName = "Cliente") {
 
 // 🟢 FIX: activateClient (Borrando y recreando DESACTIVADO para liberar velocidad)
 export async function activateClient(config, ip, clientName = "Cliente") {
-    if (!isValidIP(ip.split('/')[0])) return { success: false, message: 'IP inválida' };
+    const cleanIP = ip.split('/')[0].trim();
+    if (!isValidIP(cleanIP)) return { success: false, message: 'IP inválida' };
 
     return withMikrotik(config, async (api) => {
         const queueMenu = api.menu('/queue/simple');
 
-        // 🔥 SOLO BORRA POR IP
+        // 🔥 SOLO BORRA POR IP (y si tiene nuestra firma)
         await deleteClientQueue(queueMenu, ip);
 
         // ATENCIÓN: Se crea con disabled: "yes" y sin max-limit para liberar el tráfico!
@@ -108,9 +119,9 @@ export async function activateClient(config, ip, clientName = "Cliente") {
         try {
             await queueMenu.add({
                 name: clientName.toUpperCase().trim(),
-                target: ip.includes('/') ? ip.trim() : `${ip.trim()}/32`,
+                target: `${cleanIP}/32`,
                 disabled: "yes", 
-                comment: `InterRed | ACTIVO | ${new Date().toLocaleDateString()}`
+                comment: `SYS:INTERRED:${cleanIP} | ACTIVO | ${clientName} | ${new Date().toLocaleDateString()}`
             });
         } catch (addErr) {
             console.error("❌ Error fatal al crear queue activada:", addErr.message);
