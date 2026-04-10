@@ -10,10 +10,12 @@ function isValidIP(ip) {
 async function withMikrotik(config, callback) {
     const api = new RouterOSClient({
         host: config.host,
-        port: 8728,
+        port: config.port || 8729,
         user: config.user,
         password: config.password,
-        keepalive: false
+        keepalive: false,
+        tls: true,
+        rejectUnauthorized: false
     });
 
     try {

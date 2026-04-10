@@ -44,9 +44,10 @@ function getMikrotikConfig() {
     const settings = DB.getSettings();
     return {
         host: settings.mikrotikHost || '181.209.118.162',
-        port: 8728,
+        port: 8729,
         user: settings.mikrotikUser || 'interred_api',
-        password: settings.mikrotikPassword || 'InterRed2026'
+        password: settings.mikrotikPassword || 'InterRed2026',
+        ssl: true
     };
 }
 
@@ -131,9 +132,10 @@ export async function getMikrotikStatus(config) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 host: config.host || '181.209.118.162',
-                port: parseInt(config.port || 8728),
+                port: parseInt(config.port || 8729),
                 user: config.user || 'interred_api',
-                password: config.password || 'InterRed2026'
+                password: config.password || 'InterRed2026',
+                ssl: true
             })
         });
     } catch (error) {
