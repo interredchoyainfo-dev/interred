@@ -228,3 +228,18 @@ export async function listSimpleQueues(config) {
         return { success: true, data };
     });
 }
+
+// ---- COMPATIBILITY STUBS ----
+// (Funciones requeridas por server/index.js que no estaban definidas para evitar el crash status 1)
+export async function getMorososList(config) {
+    return { success: false, data: [], message: 'No implementado' };
+}
+export async function suspendQueueByName(config, name) {
+    return { success: false, message: 'No implementado' };
+}
+export async function activateQueueByName(config, name) {
+    return { success: false, message: 'No implementado' };
+}
+export async function updateClientQueue(config, clientIp, clientName, action) {
+    return { success: false, message: 'No implementado' };
+}
