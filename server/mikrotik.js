@@ -129,8 +129,7 @@ export async function activateClient(config, ip, clientName = "Cliente") {
         const q = await getQueueByAnyMeans(queueMenu, ip, clientName);
 
         const params = {
-            "max-limit": "unlimited/unlimited",
-            disabled: "yes", // Desactivamos la cola limitante para que el PPPoE/DHCP maneje la velocidad real
+            disabled: "yes", // Desactivamos la cola limitante para que recupere su velocidad
             comment: `InterRed | ACTIVO | ${new Date().toLocaleDateString()}`
         };
 
