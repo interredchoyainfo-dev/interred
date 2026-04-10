@@ -30,64 +30,45 @@ async function withMikrotik(config, callback) {
     }
 }
 
-/**
- * Super Destructor de Queues
- * Borra cualquier queue estática que tenga el mismo nombre exacto o la misma IP.
- * Libera la cancha para poder recrear limpiamente.
- */
-async function obliterateQueues(queueMenu, ip, name) {
-    if (!ip) return;
-    
+// 🔍 FIX: Buscar queue existente sin borrar (SAFE MODE)
+async function findQueue(queueMenu, ip, name) {
     const target1 = ip.trim();
     const target2 = target1.includes('/') ? target1 : `${target1}/32`;
     const nameUpper = (name || '').trim().toUpperCase();
-    
-    let allQueues = [];
+
+    let queues = [];
     try {
-        allQueues = await queueMenu.get();
+        queues = await queueMenu.get();
     } catch (err) {
         console.error("❌ Error fetching all queues:", err.message);
-        return;
+        return null;
     }
 
-    if (!allQueues || allQueues.length === 0) return;
+    if (!queues || queues.length === 0) return null;
 
-    // Buscar colas para eliminar
-    const toDelete = allQueues.filter(q => {
-        // Ignorar colas dinámicas (las de PPPoE/Hotspot, no se pueden modificar ni borrar sin error)
+    return queues.find(q => {
+        // Ignorar colas dinámicas (las de PPPoE/Hotspot, no se pueden modificar)
         if (q.dynamic === 'true' || q.dynamic === true) return false;
 
         const qTarget = (q.target || '').trim();
         const qName = (q.name || '').trim().toUpperCase();
-        
-        // Si tiene el mismo nombre, SE BORRA para evitar 'already have such name'
-        if (qName === nameUpper) return true;
-        
-        // Si tiene el destino IP coincidente, SE BORRA para no saturar 
-        if (qTarget === target1 || qTarget === target2) return true;
-        
-        return false;
-    });
 
-    for (const q of toDelete) {
-        console.log(`🗑️ Eliminando queue estática encontrada: ${q.name} (ID: ${q['.id']})`);
-        try { 
-            await queueMenu.remove(q['.id']); 
-        } catch (e) {
-            console.warn(`⚠️ No se pudo borrar queue ${q['.id']}: ${e.message}`);
-        }
-    }
+        return (
+            qName === nameUpper ||
+            qTarget === target1 ||
+            qTarget === target2
+        );
+    });
 }
 
-// 🔴 REDUCIR
+// 🔴 FIX: reduceClient (SIN BORRAR)
 export async function reduceClient(config, ip, clientName = "Cliente") {
     if (!isValidIP(ip.split('/')[0])) return { success: false, message: 'IP inválida' };
 
     return withMikrotik(config, async (api) => {
         const queueMenu = api.menu('/queue/simple');
-        
-        // 1. Destruimos cualquier conflicto viejo
-        await obliterateQueues(queueMenu, ip, clientName);
+
+        const existing = await findQueue(queueMenu, ip, clientName);
 
         const params = {
             "max-limit": "1k/1k",
@@ -95,50 +76,75 @@ export async function reduceClient(config, ip, clientName = "Cliente") {
             comment: `InterRed | LIMITADO | ${clientName} | ${new Date().toLocaleDateString()}`
         };
 
-        // 2. Creamos de 0 con los valores estrictos
-        console.log(`➕ Creando queue LIMPIA para reducir: ${clientName}`);
-        try {
-            await queueMenu.add({
-                name: clientName.toUpperCase().trim(),
-                target: ip.includes('/') ? ip.trim() : `${ip.trim()}/32`,
-                ...params
-            });
-            return { success: true, message: "Cliente reducido con éxito (Recreado limipito)" };
-        } catch (addErr) {
-            console.error("❌ Error fatal al crear/reducir queue:", addErr.message);
-            throw addErr;
+        if (existing) {
+            console.log(`✏️ Editando queue existente: ${existing.name}`);
+            try {
+                await queueMenu.set({
+                    ".id": existing['.id'],
+                    ...params
+                });
+            } catch (err) {
+                console.error(`⚠️ Error al editar ID: ${err.message}`);
+                return { success: false, message: `Error actualizando queue: ${err.message}` };
+            }
+        } else {
+            console.log(`➕ Creando nueva queue: ${clientName}`);
+            try {
+                await queueMenu.add({
+                    name: clientName.toUpperCase().trim(),
+                    target: ip.includes('/') ? ip.trim() : `${ip.trim()}/32`,
+                    ...params
+                });
+            } catch (addErr) {
+                console.error("❌ Error fatal al crear queue:", addErr.message);
+                throw addErr;
+            }
         }
+
+        return { success: true, message: "Cliente reducido (Estado in-place guardado)" };
     });
 }
 
-// 🟢 ACTIVAR
+// 🟢 FIX: activateClient (SIN BORRAR)
 export async function activateClient(config, ip, clientName = "Cliente") {
     if (!isValidIP(ip.split('/')[0])) return { success: false, message: 'IP inválida' };
 
     return withMikrotik(config, async (api) => {
         const queueMenu = api.menu('/queue/simple');
-        
-        // 1. Destruimos conflictos
-        await obliterateQueues(queueMenu, ip, clientName);
+
+        const existing = await findQueue(queueMenu, ip, clientName);
 
         const params = {
-            disabled: "yes", // Cola apagada, el cliente vuela libre
+            disabled: "yes",
             comment: `InterRed | ACTIVO | ${new Date().toLocaleDateString()}`
         };
 
-        // 2. Creamos apagada
-        console.log(`➕ Creando queue LIMPIA desactivada para liberar: ${clientName}`);
-        try {
-            await queueMenu.add({
-                name: clientName.toUpperCase().trim(),
-                target: ip.includes('/') ? ip.trim() : `${ip.trim()}/32`,
-                ...params
-            });
-            return { success: true, message: "Cliente activado con éxito (Recreado apagado)" };
-        } catch (addErr) {
-            console.error("❌ Error fatal al crear/activar queue:", addErr.message);
-            throw addErr;
+        if (existing) {
+            console.log(`✏️ Editando queue existente: ${existing.name}`);
+            try {
+                await queueMenu.set({
+                    ".id": existing['.id'],
+                    ...params
+                });
+            } catch (err) {
+                console.error(`⚠️ Error al editar ID: ${err.message}`);
+                return { success: false, message: `Error actualizando queue: ${err.message}` };
+            }
+        } else {
+            console.log(`➕ Creando nueva queue: ${clientName}`);
+            try {
+                await queueMenu.add({
+                    name: clientName.toUpperCase().trim(),
+                    target: ip.includes('/') ? ip.trim() : `${ip.trim()}/32`,
+                    ...params
+                });
+            } catch (addErr) {
+                console.error("❌ Error fatal al crear queue:", addErr.message);
+                throw addErr;
+            }
         }
+
+        return { success: true, message: "Cliente activado (Estado in-place guardado)" };
     });
 }
 
