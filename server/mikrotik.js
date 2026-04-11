@@ -52,56 +52,63 @@ async function findQueue(queueMenu, ip) {
     });
 }
 
-// 🛡️ Bucle de seguridad para Forzar Estado de la Cola
-async function enforceQueueState(api, ip, clientName, isReducing) {
+// 🛠️ Función unificada para gestionar el estado de la cola
+async function handleQueue(api, ip, clientName, shouldBeActive) {
     const queueMenu = api.menu('/queue/simple');
     const cleanIP = ip.split('/')[0].trim();
+    const target = `${cleanIP}/32`;
+    const now = new Date().toLocaleString('es-AR');
+    
+    // Buscamos si ya existe
     const existing = await findQueue(queueMenu, cleanIP);
 
-    // 🔴 REDUCIR
-    if (isReducing) {
+    if (shouldBeActive) {
+        // 🔴 MODO REDUCIDO (La cola debe existir y estar ENABLED)
+        const queueData = {
+            name: `IP_${cleanIP}`,
+            target: target,
+            "max-limit": "1k/1k",
+            comment: `REDUCIDO: ${clientName} - ${now}`
+        };
+
+        if (existing) {
+            await queueMenu.set({ ".id": existing['.id'], ...queueData });
+            await queueMenu.enable({ ".id": existing['.id'] });
+        } else {
+            await queueMenu.add(queueData);
+        }
+        return { success: true, message: 'Servicio reducido (1k/1k)' };
+    } else {
+        // 🟢 MODO ACTIVO (La cola debe estar DISABLED para no limitar)
         if (existing) {
             await queueMenu.set({
                 ".id": existing['.id'],
-                "max-limit": "1k/1k"
+                comment: `ACTIVO: ${clientName} - ${now}`
             });
-            await queueMenu.enable({ ".id": existing['.id'] });
-            return { success: true };
-        }
-
-        await queueMenu.add({
-            name: `IP_${cleanIP}`,
-            target: `${cleanIP}/32`,
-            "max-limit": "1k/1k"
-        });
-        return { success: true };
-    }
-
-    // 🟢 ACTIVAR
-    if (!isReducing) {
-        if (existing) {
             await queueMenu.disable({ ".id": existing['.id'] });
-            return { success: true };
+            return { success: true, message: 'Servicio liberado' };
         }
-        return { success: true };
+        // Si no existe y el cliente está activo, no hace falta crearla 
+        // porque el cliente ya navega libre sin cola.
+        return { success: true, message: 'Cliente ya navega libre (sin cola)' };
     }
 }
 
-// 🔴 REDUCIR
+// 🔴 REDUCIR (Crea/Habilita la cola a 1k/1k)
 export async function reduceClient(config, ip, clientName = "Cliente") {
     if (!isValidIP(ip.split('/')[0])) return { success: false, message: 'IP inválida' };
 
     return withMikrotik(config, async (api) => {
-        return await enforceQueueState(api, ip, clientName, true);
+        return await handleQueue(api, ip, clientName, true);
     });
 }
 
-// 🟢 ACTIVAR
+// 🟢 ACTIVAR (Deshabilita la cola)
 export async function activateClient(config, ip, clientName = "Cliente") {
     if (!isValidIP(ip.split('/')[0])) return { success: false, message: 'IP inválida' };
 
     return withMikrotik(config, async (api) => {
-        return await enforceQueueState(api, ip, clientName, false);
+        return await handleQueue(api, ip, clientName, false);
     });
 }
 
