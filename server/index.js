@@ -42,6 +42,9 @@ app.use(cors({
 
 app.use(express.json());
 
+// Responder explícitamente a las peticiones OPTIONS (vital para evitar el error de los logs)
+app.options('*', cors());
+
 // ---- SYNC ENDPOINT ----
 app.post('/api/mikrotik/sync', async (req, res) => {
     try {
@@ -179,9 +182,17 @@ app.post('/api/queues', async (req, res) => {
     }
 });
 
-// Global Rejection Handler
+// Global Rejection Handler Reforzado
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    console.error('⚠️ ATENCIÓN: Promesa no manejada detectada para evitar crash:');
+    console.error('Motivo:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('⚠️ ERROR CRÍTICO (Uncaught Exception):', err.message);
+    if (!(err.message || '').includes('!empty')) {
+        console.error(err.stack);
+    }
 });
 
 

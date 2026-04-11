@@ -41,29 +41,33 @@ async function findQueue(queueMenu, ip) {
     const cleanIP = ip.split('/')[0].trim();
     const nameTarget = `IP_${cleanIP}`;
 
-    console.log(`[ findQueue ] Buscando nativamente: target=${cleanIP}/32 o name=${nameTarget}`);
+    console.log(`[ findQueue ] Buscando nativamente: ${cleanIP}`);
 
     try {
-        // Intentamos buscar por target primero
-        let results = await queueMenu.get({
-            "?target": `${cleanIP}/32`
-        });
-
-        // Si no hay resultados, intentamos por nombre
-        if (!results || results.length === 0) {
-            results = await queueMenu.get({
-                "?name": nameTarget
-            });
+        // Intentamos buscar por target (lo más fiable)
+        // Probamos con y sin /32
+        const targetsToTry = [`${cleanIP}/32`, cleanIP];
+        
+        for (const target of targetsToTry) {
+            const results = await queueMenu.get({ "?target": target });
+            if (results && results.length > 0) {
+                const q = results[0];
+                const realId = q['.id'] || q.id || q.name;
+                console.log(`[ findQueue ] ✅ ENCONTRADA por Target: ${q.name}`);
+                return { ...q, "_detectedId": realId };
+            }
         }
 
-        if (results && results.length > 0) {
-            const q = results[0];
+        // Si no, por nombre
+        const resultsByName = await queueMenu.get({ "?name": nameTarget });
+        if (resultsByName && resultsByName.length > 0) {
+            const q = resultsByName[0];
             const realId = q['.id'] || q.id || q.name;
-            console.log(`[ findQueue ] ✅ ENCONTRADA: ${q.name} | ID: ${realId}`);
+            console.log(`[ findQueue ] ✅ ENCONTRADA por Nombre: ${q.name}`);
             return { ...q, "_detectedId": realId };
         }
     } catch (e) { 
-        console.error("❌ Error en búsqueda nativa MikroTik:", e.message);
+        console.error("❌ Error en búsqueda MikroTik:", e.message);
     }
     
     console.log(`[ findQueue ] ⚠️ No se encontró ninguna cola para ${cleanIP}`);
