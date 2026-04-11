@@ -2061,6 +2061,40 @@ const App = {
         this._bind('btn-script-morosos', () => this.generateMikrotikScript('morosos'));
         this._bind('btn-script-api-config', () => this.generateMikrotikScript('api-config'));
 
+        // ======== SYNC BUTTONS ========
+        const handleSync = async (clean = false) => {
+            const clients = DB.getClients();
+            const morosos = DB.getMorosos(); // Using actual morosos list
+            const settings = DB.getSettings();
+            const router = settings.routers[settings.activeRouterIndex];
+            
+            const config = {
+                host: router.host,
+                port: parseInt(router.port || '8728'),
+                user: router.user,
+                password: router.password
+            };
+
+            this.showToast(clean ? 'Sincronizando clientes (sin comentarios)...' : 'Iniciando sincronización completa...', 'info');
+            
+            try {
+                const { syncMikrotik } = await import('./mikrotikService.js');
+                const res = await syncMikrotik(config, clients, morosos, clean);
+                
+                if (res && res.success) {
+                    this.showToast('✅ Sincronización completada con éxito.', 'success');
+                    console.log("[SYNC ACTIONS]", res.actions);
+                } else {
+                    this.showToast(`❌ Error en sincronización: ${res?.message}`, 'error');
+                }
+            } catch (e) {
+                this.showToast('Error de conexión con el backend', 'error');
+            }
+        };
+
+        this._bind('btn-sync-mikrotik-main', () => handleSync(false));
+        this._bind('btn-sync-mikrotik-clients', () => handleSync(true));
+
         this._bind('btn-copy-script', () => {
             const output = document.getElementById('script-output');
             if (output) {

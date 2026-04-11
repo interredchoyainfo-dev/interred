@@ -172,12 +172,12 @@ export async function rebootMikrotik(config) {
     }
 }
 
-export async function syncMikrotik(config, clients, morosos) {
+export async function syncMikrotik(config, clients, morosos, clean = false) {
     try {
         return await fetchWithTimeout(`${API_URL}/api/mikrotik/sync`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ config, clients, morosos })
+            body: JSON.stringify({ config, clients, morosos, clean })
         });
     } catch (e) {
         return { success: false, message: e.message };

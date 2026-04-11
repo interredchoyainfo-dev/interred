@@ -233,7 +233,7 @@ export async function updateClientQueue(config, ip, clientName, action) {
         return activateClient(config, ip, clientName);
     }
 }
-export async function syncClientsWithMikrotik(config, clients, morosos) {
+export async function syncClientsWithMikrotik(config, clients, morosos, clean = false) {
     return withMikrotik(config, async (api) => {
         const queueMenu = api.menu('/queue/simple');
         let queues = [];
@@ -245,7 +245,7 @@ export async function syncClientsWithMikrotik(config, clients, morosos) {
         }
         
         let actions = [];
-        console.log(`[ SYNC ] Iniciando sincronización de ${clients.length} clientes...`);
+        console.log(`[ SYNC ] Iniciando sincronización de ${clients.length} clientes... (Clean: ${clean})`);
 
         for (const client of clients) {
             try {
@@ -273,9 +273,12 @@ export async function syncClientsWithMikrotik(config, clients, morosos) {
                         name: `IP_${cleanIP}`,
                         target: target,
                         "max-limit": "1k/1k",
-                        comment: `SYNC: MOROSO | ${new Date().toLocaleDateString()}`,
                         disabled: "no"
                     };
+                    
+                    if (!clean) {
+                        queueData.comment = `SYNC: MOROSO | ${new Date().toLocaleDateString()}`;
+                    }
 
                     if (existing && realId) {
                         await queueMenu.set({ ".id": realId, ...queueData });
@@ -285,10 +288,18 @@ export async function syncClientsWithMikrotik(config, clients, morosos) {
                         actions.push(`➕ ${cleanIP} creado y limitado`);
                     }
                 }
-                // 🟢 ACTIVO → NO DEBE LIMITAR (Deshabilitamos la cola si existe)
+                // 🟢 ACTIVO → NO DEBE LIMITAR (Deshabilitamos la cola si existe, o garantizamos que esté libre)
                 else {
                     if (existing && realId) {
-                        await queueMenu.set({ ".id": realId, disabled: "yes" });
+                        // Si existe, la deshabilitamos para dar navegación libre
+                        const updateData = { disabled: "yes" };
+                        if (!clean) {
+                            updateData.comment = `SYNC: ACTIVO | ${new Date().toLocaleDateString()}`;
+                        } else {
+                            updateData.comment = ""; // Sin comentarios
+                        }
+                        
+                        await queueMenu.set({ ".id": realId, ...updateData });
                         actions.push(`🟢 ${cleanIP} liberado`);
                     }
                 }

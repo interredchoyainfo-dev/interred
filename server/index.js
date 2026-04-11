@@ -45,14 +45,14 @@ app.use(express.json());
 // ---- SYNC ENDPOINT ----
 app.post('/api/mikrotik/sync', async (req, res) => {
     try {
-        const { config, clients, morosos } = req.body;
+        const { config, clients, morosos, clean } = req.body;
         if (!config || !clients) {
-            return res.status(400).json({ success: false, message: 'Faltan datos' });
+            return res.status(200).json({ success: false, message: 'Faltan datos' });
         }
-        const result = await syncClientsWithMikrotik(config, clients, morosos || []);
+        const result = await syncClientsWithMikrotik(config, clients, morosos || [], !!clean);
         res.json(result);
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(200).json({ success: false, message: error.message });
     }
 });
 
