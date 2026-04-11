@@ -234,70 +234,88 @@ export async function updateClientQueue(config, ip, clientName, action) {
 export async function syncClientsWithMikrotik(config, clients, morosos) {
     return withMikrotik(config, async (api) => {
         const queueMenu = api.menu('/queue/simple');
-        const queues = await queueMenu.get();
+        let queues = [];
+        try {
+            queues = await queueMenu.get();
+        } catch (e) {
+            console.error("❌ Error listando colas en Sync:", e.message);
+            return { success: false, message: "No se pudo obtener la lista de colas" };
+        }
+        
         let actions = [];
+        console.log(`[ SYNC ] Iniciando sincronización de ${clients.length} clientes...`);
 
         for (const client of clients) {
-            if (!client.ip || client.ip === "0.0.0.0") continue;
+            try {
+                if (!client.ip || client.ip === "0.0.0.0") continue;
 
-            const cleanIP = client.ip.split('/')[0].trim();
-            const target = `${cleanIP}/32`;
+                const cleanIP = client.ip.split('/')[0].trim();
+                const target = `${cleanIP}/32`;
+                const targets = [target, cleanIP];
 
-            const isMoroso = morosos.some(m => m.clientId === client.id) || client.estado === 'Deudor';
+                const isMoroso = morosos.some(m => m.clientId === client.id) || client.estado === 'Deudor';
 
-            const existing = queues.find(q => {
-                let qTarget = (q.target || '').trim();
-                if (!qTarget.includes('/')) qTarget = `${qTarget}/32`;
-                return qTarget === target;
-            });
+                const existingArr = queues.filter(q => {
+                    const qTarget = (q.target || '').trim();
+                    const qName = (q.name || '').toUpperCase();
+                    const nameTarget = `IP_${cleanIP}`.toUpperCase();
+                    return targets.includes(qTarget) || qName === nameTarget;
+                });
 
-            // 🔴 MOROSO → DEBE TENER QUEUE ACTIVA
-            if (isMoroso) {
-                if (existing) {
-                    // asegurar estado
-                    await queueMenu.enable({ ".id": existing['.id'] });
-                    await queueMenu.set({
-                        ".id": existing['.id'],
-                        "max-limit": "1k/1k",
-                        comment: `SYNC: MOROSO | ${new Date().toLocaleDateString()}`
-                    });
-                    actions.push(`✔ ${cleanIP} limitado`);
-                } else {
-                    await queueMenu.add({
+                const existing = existingArr[0];
+                const realId = existing ? (existing['.id'] || existing.id || existing.name) : null;
+
+                // 🔴 MOROSO → DEBE TENER QUEUE ACTIVA (Limitada)
+                if (isMoroso) {
+                    const queueData = {
                         name: `IP_${cleanIP}`,
                         target: target,
                         "max-limit": "1k/1k",
-                        comment: `SYNC: MOROSO`
-                    });
-                    actions.push(`➕ ${cleanIP} creado y limitado`);
+                        comment: `SYNC: MOROSO | ${new Date().toLocaleDateString()}`
+                    };
+
+                    if (existing && realId) {
+                        await queueMenu.set({ ".id": realId, ...queueData });
+                        await queueMenu.enable({ ".id": realId });
+                        actions.push(`✔ ${cleanIP} limitado`);
+                    } else {
+                        await queueMenu.add(queueData);
+                        actions.push(`➕ ${cleanIP} creado y limitado`);
+                    }
                 }
-            }
-            // 🟢 ACTIVO → NO DEBE LIMITAR
-            else {
-                if (existing) {
-                    await queueMenu.disable({ ".id": existing['.id'] });
-                    actions.push(`🟢 ${cleanIP} liberado`);
+                // 🟢 ACTIVO → NO DEBE LIMITAR (Deshabilitamos la cola si existe)
+                else {
+                    if (existing && realId) {
+                        await queueMenu.disable({ ".id": realId });
+                        actions.push(`🟢 ${cleanIP} liberado`);
+                    }
                 }
+            } catch (err) {
+                console.error(`[ SYNC ] Error procesando cliente ${client.nombre}:`, err.message);
+                actions.push(`❌ Error en ${client.ip}: ${err.message}`);
+                // Continuamos con el siguiente cliente
             }
-            // Pequeña espera para no saturar CPU del router
-            await new Promise(r => setTimeout(r, 300));
         }
 
-        // 💣 BONUS: LIMPIEZA AUTOMÁTICA
+        // 💣 LIMPIEZA DE HUÉRFANOS (Opcional, pero útil)
+        console.log("[ SYNC ] Limpiando colas huérfanas...");
         for (const q of queues) {
-            const qTarget = (q.target || '').split('/')[0].trim();
-            const existsInClients = clients.some(c => {
-                const ip = (c.ip || '').split('/')[0].trim();
-                return ip === qTarget;
-            });
+            try {
+                const qTarget = (q.target || '').split('/')[0].trim();
+                const qName = (q.name || '');
+                const realId = q['.id'] || q.id || q.name;
 
-            if (!existsInClients && !q.dynamic) {
-                try {
-                    await queueMenu.remove(q['.id']);
-                    actions.push(`🗑 Queue eliminada (${q.name || q.target})`);
-                } catch (e) {
-                    console.error(`Error removing orphan queue ${q.name}:`, e.message);
+                const existsInClients = clients.some(c => {
+                    const ip = (c.ip || '').split('/')[0].trim();
+                    return ip === qTarget;
+                });
+
+                if (!existsInClients && !q.dynamic && qName.startsWith('IP_') && realId) {
+                    await queueMenu.remove({ ".id": realId });
+                    actions.push(`🗑 Queue eliminada (${qName})`);
                 }
+            } catch (e) {
+                console.error(`[ SYNC ] Error eliminando cola huérfana:`, e.message);
             }
         }
 
