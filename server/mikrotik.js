@@ -56,47 +56,40 @@ async function findExactQueueByIp(queueMenu, ip) {
 async function enforceQueueState(api, ip, clientName, isReducing) {
     const queueMenu = api.menu('/queue/simple');
     const cleanIP = ip.split('/')[0].trim();
-    console.log(`[MIKROTIK] ${isReducing ? 'REDUCIR' : 'ACTIVAR'} ${cleanIP}`);
+    const target = `${cleanIP}/32`;
 
     const existing = await findExactQueueByIp(queueMenu, cleanIP);
 
     // 🔴 REDUCIR
     if (isReducing) {
-        if (existing && existing['.id']) {
-            // 1. asegurar que esté habilitada
-            await queueMenu.enable({ ".id": existing['.id'] });
-
-            // 2. limitar velocidad
+        if (existing) {
             await queueMenu.set({
                 ".id": existing['.id'],
-                "max-limit": "1k/1k",
-                comment: `SYS:INTERRED:${cleanIP} | REDUCIDO | ${new Date().toLocaleDateString()}`
+                "max-limit": "1k/1k"
             });
-
-            return { success: true, message: "Cliente reducido (existente)" };
+            await queueMenu.enable({ ".id": existing['.id'] });
+            return { success: true, message: "Reducido OK" };
         }
 
-        // crear si no existe
         await queueMenu.add({
-            name: `${clientName.toUpperCase().replace(/\s+/g, '_')}_${cleanIP}`,
-            target: `${cleanIP}/32`,
-            "max-limit": "1k/1k",
-            comment: `SYS:INTERRED:${cleanIP}`
+            name: `IP_${cleanIP}`,
+            target: target,
+            "max-limit": "1k/1k"
         });
-
-        return { success: true, message: "Cliente reducido (creado)" };
+        return { success: true, message: "Reducido (creado)" };
     }
 
     // 🟢 ACTIVAR
     if (!isReducing) {
-        if (existing && existing['.id']) {
-            // SOLO desactivar queue
+        if (existing) {
+            await queueMenu.set({
+                ".id": existing['.id'],
+                "max-limit": "0/0"
+            });
             await queueMenu.disable({ ".id": existing['.id'] });
-
-            return { success: true, message: "Cliente activado (queue deshabilitada)" };
+            return { success: true, message: "Activado OK" };
         }
-
-        return { success: true, message: "Cliente activado (sin queue)" };
+        return { success: true, message: "Sin queue (ya activo)" };
     }
 }
 
@@ -235,7 +228,7 @@ export async function syncClientsWithMikrotik(config, clients, morosos) {
                     actions.push(`✔ ${cleanIP} limitado`);
                 } else {
                     await queueMenu.add({
-                        name: `${client.nombre.toUpperCase().replace(/\s+/g, '_')}_${cleanIP}`,
+                        name: `IP_${cleanIP}`,
                         target: target,
                         "max-limit": "1k/1k",
                         comment: `SYNC: MOROSO`
@@ -248,8 +241,9 @@ export async function syncClientsWithMikrotik(config, clients, morosos) {
                 if (existing) {
                     await queueMenu.disable({ ".id": existing['.id'] });
                     actions.push(`🟢 ${cleanIP} liberado`);
-                }
             }
+            // Pequeña espera para no saturar CPU del router
+            await new Promise(r => setTimeout(r, 300));
         }
 
         // 💣 BONUS: LIMPIEZA AUTOMÁTICA
