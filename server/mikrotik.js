@@ -32,7 +32,7 @@ async function withMikrotik(config, callback) {
 
 async function findQueue(queueMenu, ip) {
     const cleanIP = ip.split('/')[0].trim();
-    const targets = [`${cleanIP}/32`, cleanIP]; // Probar ambos formatos
+    const targets = [`${cleanIP}/32`, cleanIP];
     const nameTarget = `IP_${cleanIP}`.toUpperCase();
 
     let queues = [];
@@ -46,19 +46,25 @@ async function findQueue(queueMenu, ip) {
 
     console.log(`[ findQueue ] Buscando IP: ${cleanIP} o Nombre: ${nameTarget} en ${queues.length} colas.`);
 
-    return queues.find(q => {
-        let qTarget = (q.target || '').trim();
+    for(const q of queues) {
+        const qTarget = (q.target || '').trim();
         const qName = (q.name || '').toUpperCase();
 
         const matchIp = targets.includes(qTarget);
         const matchName = qName === nameTarget;
 
         if (matchIp || matchName) {
-            console.log(`[ findQueue ] ✅ ENCONTRADA: ${q.name} | Target: ${q.target} | ID: ${q['.id']}`);
-            return true;
+            // Detectar el ID real (algunas versiones usan .id, otras id, o el nombre sirve de alias)
+            const realId = q['.id'] || q.id || q.name;
+            console.log(`[ findQueue ] ✅ ENCONTRADA: ${q.name} | Target: ${q.target} | ID Detectado: ${realId}`);
+            
+            // Log de depuración para ver todas las llaves si el ID sigue fallando
+            if (!realId) console.log("[ findQueue ] 🛠 LLAVES DISPONIBLES:", Object.keys(q));
+            
+            return { ...q, "_detectedId": realId };
         }
-        return false;
-    });
+    }
+    return null;
 }
 
 // 🛠️ Función unificada para gestionar el estado de la cola
@@ -82,10 +88,10 @@ async function handleQueue(api, ip, clientName, shouldBeActive) {
                 comment: `REDUCIDO: ${clientName} - ${now}`
             };
 
-            if (existing) {
-                console.log(`[ handleQueue ] Actualizando cola existente ID: ${existing['.id']}`);
-                await queueMenu.set({ ".id": existing['.id'], ...queueData });
-                await queueMenu.enable({ ".id": existing['.id'] });
+            if (existing && existing._detectedId) {
+                console.log(`[ handleQueue ] Actualizando cola existente ID: ${existing._detectedId}`);
+                await queueMenu.set({ ".id": existing._detectedId, ...queueData });
+                await queueMenu.enable({ ".id": existing._detectedId });
             } else {
                 console.log(`[ handleQueue ] Creando nueva cola.`);
                 await queueMenu.add(queueData);
@@ -93,13 +99,20 @@ async function handleQueue(api, ip, clientName, shouldBeActive) {
             return { success: true, message: 'Servicio reducido (1k/1k)' };
         } else {
             // 🟢 MODO ACTIVO
-            if (existing) {
-                console.log(`[ handleQueue ] Desactivando cola ID: ${existing['.id']}`);
-                await queueMenu.set({
-                    ".id": existing['.id'],
-                    comment: `ACTIVO: ${clientName} - ${now}`
-                });
-                await queueMenu.disable({ ".id": existing['.id'] });
+            if (existing && existing._detectedId) {
+                console.log(`[ handleQueue ] Desactivando cola ID: ${existing._detectedId}`);
+                
+                // Primero intentamos poner el comentario (opcional)
+                try {
+                    await queueMenu.set({
+                        ".id": existing._detectedId,
+                        comment: `ACTIVO: ${clientName} - ${now}`
+                    });
+                } catch (e) {
+                    console.warn("[ handleQueue ] No se pudo actualizar comentario, siguiendo con disable...");
+                }
+
+                await queueMenu.disable({ ".id": existing._detectedId });
                 return { success: true, message: 'Servicio liberado' };
             }
             console.log(`[ handleQueue ] No hay cola que desactivar. Cliente ya libre.`);
@@ -107,7 +120,7 @@ async function handleQueue(api, ip, clientName, shouldBeActive) {
         }
     } catch (err) {
         console.error(`[ handleQueue ] ❌ ERROR OPERACIÓN:`, err.message);
-        throw err; // withMikrotik lo capturará
+        throw err;
     }
 }
 
