@@ -32,7 +32,7 @@ const PORT = process.env.PORT || 3000;
 
 // CONFIGURACIÓN DE CORS GLOBAL (Debe ir antes de las rutas)
 app.use(cors());
-app.options('/*', cors());
+app.options(/.*/, cors());
 app.use(express.json());
 
 // ---- SYNC ENDPOINT ----
