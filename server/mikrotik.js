@@ -74,63 +74,60 @@ async function findQueue(queueMenu, ip) {
     return null;
 }
 
-// 🛠️ Función unificada para gestionar el estado de la cola
 async function handleQueue(api, ip, clientName, shouldBeActive) {
     const cleanIP = ip.split('/')[0].trim();
     const now = new Date().toLocaleString('es-AR', { hour12: false });
     
-    console.log(`[ handleQueue ] Corriendo para ${clientName} (${cleanIP}) | Modo: ${shouldBeActive ? 'REDUCIR' : 'ACTIVAR'}`);
+    console.log(`[ handleQueue ] INICIO: ${clientName} (${cleanIP}) | Modo: ${shouldBeActive ? 'REDUCIR' : 'ACTIVAR'}`);
     
-    const queueMenu = api.menu('/queue/simple');
-    const existing = await findQueue(queueMenu, cleanIP);
-
     try {
+        const queueMenu = api.menu('/queue/simple');
+        const existing = await findQueue(queueMenu, cleanIP);
+        const realId = existing ? (existing['.id'] || existing.id || existing.name || existing._detectedId) : null;
+
         if (shouldBeActive) {
-            // 🔴 MODO REDUCIDO (Cola habilitada y limitada)
+            // 🔴 MODO REDUCIR (Limitar a 1k/1k)
             const queueData = {
                 name: `IP_${cleanIP}`,
                 target: `${cleanIP}/32`,
                 "max-limit": "1k/1k",
-                comment: `REDUCIDO: ${clientName} - ${now}`,
-                disabled: "no"
+                comment: `REDUCIDO: ${clientName} - ${now}`
             };
 
-            if (existing && existing._detectedId) {
-                console.log(`[ handleQueue ] REDUCIENDO cola ID: ${existing._detectedId}`);
-                await queueMenu.set({ ".id": existing._detectedId, ...queueData });
-                await queueMenu.enable({ ".id": existing._detectedId }); // Forzar habilitación para aplicar límite
+            if (realId) {
+                console.log(`[ handleQueue ] REDUCIENDO COLA EXISTENTE ID: ${realId}`);
+                await queueMenu.set({ ".id": realId, ...queueData });
+                await queueMenu.enable({ ".id": realId });
             } else {
-                console.log(`[ handleQueue ] CREANDO nueva cola reducida.`);
+                console.log(`[ handleQueue ] CREANDO NUEVA COLA REDUCIDA: ${queueData.name}`);
                 await queueMenu.add(queueData);
             }
             return { success: true, message: 'Servicio reducido (1k/1k)' };
+
         } else {
-            // 🟢 MODO ACTIVO (Cola deshabilitada y comentario 'ACTIVO')
-            if (existing && existing._detectedId) {
-                console.log(`[ handleQueue ] ACTIVANDO (DESHABILITANDO COLA) ID: ${existing._detectedId}`);
-                
+            // 🟢 MODO ACTIVAR (Libre navegación)
+            if (realId) {
+                console.log(`[ handleQueue ] ACTIVANDO (DESHABILITANDO COLA) ID: ${realId}`);
                 await queueMenu.set({
-                    ".id": existing._detectedId,
+                    ".id": realId,
                     comment: `ACTIVO: ${clientName} - ${now}`
                 });
-                await queueMenu.disable({ ".id": existing._detectedId }); // Deshabilitar la cola = Activar navegación libre
-                
+                await queueMenu.disable({ ".id": realId });
                 return { success: true, message: 'Servicio activado (cola desactivada)' };
             }
             
-            console.log(`[ handleQueue ] No hay cola para desactivar. El cliente ya está libre.`);
-            return { success: true, message: 'Cliente ya navega libre (sin cola)' };
+            console.log(`[ handleQueue ] No hay cola para desactivar. Cliente ya libre.`);
+            return { success: true, message: 'Cliente ya navega libre' };
         }
     } catch (err) {
-        // 🛠️ FIX MIKROTIK V7: Ignorar errores que en realidad son confirmaciones
         const msg = (err.message || '').toUpperCase();
         if (msg.includes('!EMPTY') || msg.includes('UNKNOWNREPLY') || msg.includes('TRAP')) {
-            console.log(`[ handleQueue ] ⚠️ MicroTik v7 Warning: ${err.message} (Ignorando para evitar caída)`);
-            return { success: true, message: 'Operación realizada' };
+            console.log(`[ handleQueue ] ⚠️ MikroTik v7 Bypass: ${err.message}`);
+            return { success: true, message: 'Operación realizada correctamente' };
         }
-
-        console.error(`[ handleQueue ] ❌ ERROR CRÍTICO EN MIKROTIK:`, err.message);
-        throw err;
+        
+        console.error(`[ handleQueue ] ❌ ERROR MIKROTIK:`, err.message);
+        return { success: false, message: `Error MikroTik: ${err.message}` };
     }
 }
 
