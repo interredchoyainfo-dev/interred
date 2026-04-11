@@ -241,6 +241,7 @@ export async function syncClientsWithMikrotik(config, clients, morosos) {
                 if (existing) {
                     await queueMenu.disable({ ".id": existing['.id'] });
                     actions.push(`🟢 ${cleanIP} liberado`);
+                }
             }
             // Pequeña espera para no saturar CPU del router
             await new Promise(r => setTimeout(r, 300));
