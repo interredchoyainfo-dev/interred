@@ -53,46 +53,50 @@ async function findExactQueueByIp(queueMenu, ip) {
 }
 
 // 🛡️ Bucle de seguridad para Forzar Estado de la Cola
-async function enforceQueueState(api, ip, clientName, params, isReducing) {
+async function enforceQueueState(api, ip, clientName, isReducing) {
     const queueMenu = api.menu('/queue/simple');
     const cleanIP = ip.split('/')[0].trim();
-    const targetExact = `${cleanIP}/32`;
-    
-    // 1. Buscamos el estado actual
+    console.log(`[MIKROTIK] ${isReducing ? 'REDUCIR' : 'ACTIVAR'} ${cleanIP}`);
+
     const existing = await findExactQueueByIp(queueMenu, cleanIP);
 
-    const fullParams = {
-        name: clientName.toUpperCase().trim(),
-        target: targetExact,
-        comment: `SYS:INTERRED:${cleanIP} | ${isReducing ? 'LIMITADO' : 'ACTIVO'} | ${clientName} | ${new Date().toLocaleDateString()}`,
-        ...params
-    };
+    // 🔴 REDUCIR
+    if (isReducing) {
+        if (existing && existing['.id']) {
+            // 1. asegurar que esté habilitada
+            await queueMenu.enable({ ".id": existing['.id'] });
 
-    if (existing && existing['.id']) {
-        console.log(`✏️ Intentando actualizar queue en caliente ID: ${existing['.id']}`);
-        try {
-            // Intentamos in-place mutation (lo más sano para el router)
-            // Forma 1 de enviar params a MikroTik JS API:
-            await queueMenu.set({ ".id": existing['.id'], ...fullParams });
-            return { success: true, message: `Cliente ${isReducing ? 'reducido' : 'activado'} (Actualizado)` };
-        } catch (err) {
-            console.warn(`⚠️ Falló el in-place set (${err.message}). Cambiando a borrado duro...`);
-            // Si el 'set' falla (ej. "no such item"), procedemos a borrar y recrear
-            try { await queueMenu.remove(existing['.id']); } catch(e) {}
+            // 2. limitar velocidad
+            await queueMenu.set({
+                ".id": existing['.id'],
+                "max-limit": "1k/1k",
+                comment: `SYS:INTERRED:${cleanIP} | REDUCIDO | ${new Date().toLocaleDateString()}`
+            });
+
+            return { success: true, message: "Cliente reducido (existente)" };
         }
+
+        // crear si no existe
+        await queueMenu.add({
+            name: `${clientName.toUpperCase().replace(/\s+/g, '_')}_${cleanIP}`,
+            target: `${cleanIP}/32`,
+            "max-limit": "1k/1k",
+            comment: `SYS:INTERRED:${cleanIP}`
+        });
+
+        return { success: true, message: "Cliente reducido (creado)" };
     }
 
-    // 2. Esperamos medio segundo para evitar el bug de MikroTik "already have such name" (Race condition)
-    await new Promise(r => setTimeout(r, 500));
+    // 🟢 ACTIVAR
+    if (!isReducing) {
+        if (existing && existing['.id']) {
+            // SOLO desactivar queue
+            await queueMenu.disable({ ".id": existing['.id'] });
 
-    // 3. Recreamos la cola limpia
-    console.log(`➕ Recreando queue desde cero: ${fullParams.name}`);
-    try {
-        await queueMenu.add(fullParams);
-        return { success: true, message: `Cliente ${isReducing ? 'reducido' : 'activado'} (Recreado)` };
-    } catch (addErr) {
-        console.error("❌ Error definitivo en MikroTik:", addErr.message);
-        throw addErr;
+            return { success: true, message: "Cliente activado (queue deshabilitada)" };
+        }
+
+        return { success: true, message: "Cliente activado (sin queue)" };
     }
 }
 
@@ -101,10 +105,7 @@ export async function reduceClient(config, ip, clientName = "Cliente") {
     if (!isValidIP(ip.split('/')[0])) return { success: false, message: 'IP inválida' };
 
     return withMikrotik(config, async (api) => {
-        return await enforceQueueState(api, ip, clientName, {
-            "max-limit": "1k/1k",
-            disabled: "no"
-        }, true);
+        return await enforceQueueState(api, ip, clientName, true);
     });
 }
 
@@ -113,9 +114,7 @@ export async function activateClient(config, ip, clientName = "Cliente") {
     if (!isValidIP(ip.split('/')[0])) return { success: false, message: 'IP inválida' };
 
     return withMikrotik(config, async (api) => {
-        return await enforceQueueState(api, ip, clientName, {
-            disabled: "yes"  // Al activar, NO mandamos max-limit para liberar el tubo entero
-        }, false);
+        return await enforceQueueState(api, ip, clientName, false);
     });
 }
 
@@ -196,6 +195,78 @@ export async function suspendQueueByName(config, name) {
 export async function activateQueueByName(config, name) {
     return { success: false, message: 'No implementado' };
 }
-export async function updateClientQueue(config, clientIp, clientName, action) {
-    return { success: false, message: 'No implementado' };
+export async function syncClientsWithMikrotik(config, clients, morosos) {
+    return withMikrotik(config, async (api) => {
+        const queueMenu = api.menu('/queue/simple');
+        const queues = await queueMenu.get();
+        let actions = [];
+
+        for (const client of clients) {
+            if (!client.ip || client.ip === "0.0.0.0") continue;
+
+            const cleanIP = client.ip.split('/')[0].trim();
+            const target = `${cleanIP}/32`;
+
+            const isMoroso = morosos.some(m => m.clientId === client.id) || client.estado === 'Deudor';
+
+            const existing = queues.find(q => {
+                let qTarget = (q.target || '').trim();
+                if (!qTarget.includes('/')) qTarget = `${qTarget}/32`;
+                return qTarget === target;
+            });
+
+            // 🔴 MOROSO → DEBE TENER QUEUE ACTIVA
+            if (isMoroso) {
+                if (existing) {
+                    // asegurar estado
+                    await queueMenu.enable({ ".id": existing['.id'] });
+                    await queueMenu.set({
+                        ".id": existing['.id'],
+                        "max-limit": "1k/1k",
+                        comment: `SYNC: MOROSO | ${new Date().toLocaleDateString()}`
+                    });
+                    actions.push(`✔ ${cleanIP} limitado`);
+                } else {
+                    await queueMenu.add({
+                        name: `${client.nombre.toUpperCase().replace(/\s+/g, '_')}_${cleanIP}`,
+                        target: target,
+                        "max-limit": "1k/1k",
+                        comment: `SYNC: MOROSO`
+                    });
+                    actions.push(`➕ ${cleanIP} creado y limitado`);
+                }
+            }
+            // 🟢 ACTIVO → NO DEBE LIMITAR
+            else {
+                if (existing) {
+                    await queueMenu.disable({ ".id": existing['.id'] });
+                    actions.push(`🟢 ${cleanIP} liberado`);
+                }
+            }
+        }
+
+        // 💣 BONUS: LIMPIEZA AUTOMÁTICA
+        for (const q of queues) {
+            const qTarget = (q.target || '').split('/')[0].trim();
+            const existsInClients = clients.some(c => {
+                const ip = (c.ip || '').split('/')[0].trim();
+                return ip === qTarget;
+            });
+
+            if (!existsInClients && !q.dynamic) {
+                try {
+                    await queueMenu.remove(q['.id']);
+                    actions.push(`🗑 Queue eliminada (${q.name || q.target})`);
+                } catch (e) {
+                    console.error(`Error removing orphan queue ${q.name}:`, e.message);
+                }
+            }
+        }
+
+        return {
+            success: true,
+            message: "Sync completado",
+            actions
+        };
+    });
 }

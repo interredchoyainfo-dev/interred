@@ -19,7 +19,8 @@ import {
     listSimpleQueues,
     suspendQueueByName,
     activateQueueByName,
-    updateClientQueue
+    updateClientQueue,
+    syncClientsWithMikrotik
 } from './mikrotik.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -28,6 +29,22 @@ const CONFIG_PATH = path.join(__dirname, '..', 'data', 'site_config.json');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// ... (existing cors and middleware) ...
+
+// ---- SYNC ENDPOINT ----
+app.post('/api/mikrotik/sync', async (req, res) => {
+    try {
+        const { config, clients, morosos } = req.body;
+        if (!config || !clients) {
+            return res.status(400).json({ success: false, message: 'Faltan datos' });
+        }
+        const result = await syncClientsWithMikrotik(config, clients, morosos || []);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 
 // CONFIGURACIÓN DE CORS DEFINITIVA
 app.use(cors({

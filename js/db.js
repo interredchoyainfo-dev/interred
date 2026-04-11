@@ -256,6 +256,30 @@ const DB = {
         return CACHE.clients.find(c => c.id === id) || null;
     },
 
+    // ---- Internal Write Helper with Timeout ----
+    async _write(ref, data, options = { merge: true }) {
+        const timeout = 8000; // 8 seconds timeout for cloud sync
+        
+        try {
+            const writePromise = setDoc(ref, data, options);
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('TIMEOUT_FIRESTORE')), timeout)
+            );
+
+            await Promise.race([writePromise, timeoutPromise]);
+            return true;
+        } catch (e) {
+            if (e.message === 'TIMEOUT_FIRESTORE' || e.message.includes('blocked') || e.code === 'unavailable') {
+                console.warn('⚠️ Cloud sync blocked or timeout. Data saved locally only.', e.message);
+                if (window.App && window.App.showToast) {
+                    window.App.showToast('⚠️ Error de conexión con la nube. El cambio se guardó localmente.', 'warning');
+                }
+                return false;
+            }
+            throw e;
+        }
+    },
+
     async saveClient(client) {
         // Prevent manual or automatic duplication
         const existing = this.getClients();
@@ -274,7 +298,7 @@ const DB = {
         };
         if (!client.createdAt) data.createdAt = new Date().toISOString();
 
-        await setDoc(clientRef, data, { merge: true });
+        await this._write(clientRef, data);
         return data;
     },
 
@@ -314,7 +338,7 @@ const DB = {
             id: id
         };
 
-        await setDoc(paymentRef, data, { merge: true });
+        await this._write(paymentRef, data);
         return data;
     },
 
@@ -368,7 +392,7 @@ const DB = {
     },
 
     async saveSettings(settings) {
-        await setDoc(doc(db, "config", "settings"), settings);
+        await this._write(doc(db, "config", "settings"), settings);
     },
 
     // ---- Morosos ----
@@ -389,7 +413,7 @@ const DB = {
             year: new Date().getFullYear(),
         };
         
-        await setDoc(doc(db, "morosos", id), entry);
+        await this._write(doc(db, "morosos", id), entry);
         return entry;
     },
 
@@ -403,7 +427,7 @@ const DB = {
     async updateMoroso(clientId, updates) {
         const moroso = CACHE.morosos.find(m => m.clientId === clientId);
         if (moroso) {
-            await updateDoc(doc(db, "morosos", moroso.id), updates);
+            await this._write(doc(db, "morosos", moroso.id), updates);
         }
     },
 

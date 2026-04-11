@@ -229,6 +229,10 @@ const App = {
         this.bindIntelligentCollection();
         this.bindMorosos();
         this.bindMikrotik();
+        
+        // Bind Sync Buttons
+        this._bind('btn-sync-morosos', () => this.syncMikrotik());
+        this._bind('btn-sync-mikrotik-main', () => this.syncMikrotik());
 
         // 🟢 HEARTBEAT SERVIDOR (Check every 10s)
         setInterval(async () => {
@@ -1226,6 +1230,9 @@ const App = {
             this.showToast('Pago registrado exitosamente', 'success');
         }
 
+        // 🔄 SYNC AUTOMÁTICO
+        this.syncMikrotik(true); // silent sync
+
         this.closeModal('modal-payment');
         this.refreshCurrentView();
     },
@@ -1515,6 +1522,7 @@ const App = {
                     this.showToast(`🔴 Sistema MikroTik: ${exito} clientes reducidos automáticamente`, 'error');
                 }
                 
+                this.syncMikrotik(true); // Sync final de seguridad
                 this.refreshCurrentView();
             }
 
@@ -1544,6 +1552,8 @@ const App = {
             this.showToast(`❌ Error MikroTik: ${res?.message}`, 'error');
         }
 
+        this.syncMikrotik(true); // Sync en segundo plano
+
         this.showClientDetail(clientId);
         this.refreshCurrentView();
     },
@@ -1565,6 +1575,8 @@ const App = {
         } else {
             this.showToast(`❌ Error MikroTik: ${res?.message}`, 'error');
         }
+
+        this.syncMikrotik(true); // Sync en segundo plano
 
         this.showClientDetail(clientId);
         this.refreshCurrentView();
@@ -2557,6 +2569,49 @@ const App = {
             toast.classList.add('toast-out');
             setTimeout(() => toast.remove(), 300);
         }, 3500);
+    },
+
+    // ========================================
+    // MIKROTIK SYNC
+    // ========================================
+    async syncMikrotik(silent = false) {
+        if (!silent) this.showToast('Sincronizando MikroTik...', 'info');
+        
+        try {
+            const settings = DB.getSettings();
+            const router = settings.routers[settings.activeRouterIndex] || settings.routers[0];
+            
+            if (!router || !router.host) {
+                if (!silent) this.showToast('Router no configurado', 'error');
+                return;
+            }
+
+            const config = {
+                host: router.host,
+                port: parseInt(router.port || '8728'),
+                user: router.user,
+                password: router.password
+            };
+
+            const clients = DB.getClients();
+            const morosos = DB.getMorosos();
+
+            const { syncMikrotik } = await import('./mikrotikService.js');
+            const res = await syncMikrotik(config, clients, morosos);
+
+            if (res.success) {
+                if (!silent) {
+                    const detail = res.actions?.length > 0 ? ` (${res.actions.length} acciones)` : '';
+                    this.showToast(`✅ Sync exitoso${detail}`, 'success');
+                }
+            } else {
+                if (!silent) this.showToast(`❌ Sync falló: ${res.message}`, 'error');
+            }
+            return res;
+        } catch (e) {
+            console.error("Sync Error:", e);
+            if (!silent) this.showToast('Error de comunicación con el servidor', 'error');
+        }
     },
 };
 

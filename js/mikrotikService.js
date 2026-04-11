@@ -159,3 +159,15 @@ export async function rebootMikrotik(config) {
         return { success: true, message: 'Reinicio enviado.' };
     }
 }
+
+export async function syncMikrotik(config, clients, morosos) {
+    try {
+        return await fetchWithTimeout(`${API_URL}/api/mikrotik/sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ config, clients, morosos })
+        });
+    } catch (e) {
+        return { success: false, message: e.message };
+    }
+}
