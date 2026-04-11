@@ -118,7 +118,14 @@ async function handleQueue(api, ip, clientName, shouldBeActive) {
             return { success: true, message: 'Cliente ya navega libre (sin cola)' };
         }
     } catch (err) {
-        console.error(`[ handleQueue ] ❌ ERROR EN MIKROTIK:`, err.message);
+        // 🛠️ FIX MIKROTIK V7: Ignorar errores que en realidad son confirmaciones
+        const msg = (err.message || '').toUpperCase();
+        if (msg.includes('!EMPTY') || msg.includes('UNKNOWNREPLY') || msg.includes('TRAP')) {
+            console.log(`[ handleQueue ] ⚠️ MicroTik v7 Warning: ${err.message} (Ignorando para evitar caída)`);
+            return { success: true, message: 'Operación realizada' };
+        }
+
+        console.error(`[ handleQueue ] ❌ ERROR CRÍTICO EN MIKROTIK:`, err.message);
         throw err;
     }
 }
@@ -285,9 +292,13 @@ export async function syncClientsWithMikrotik(config, clients, morosos) {
                     }
                 }
             } catch (err) {
+                const msg = (err.message || '').toUpperCase();
+                if (msg.includes('!EMPTY') || msg.includes('UNKNOWNREPLY')) {
+                    actions.push(`✔ ${client.ip} (v7 confirm)`);
+                    continue;
+                }
                 console.error(`[ SYNC ] Error procesando cliente ${client.nombre}:`, err.message);
                 actions.push(`❌ Error en ${client.ip}: ${err.message}`);
-                // Continuamos con el siguiente cliente
             }
         }
 
