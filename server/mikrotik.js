@@ -85,17 +85,20 @@ async function handleQueue(api, ip, clientName, shouldBeActive) {
         const existing = await findQueue(queueMenu, cleanIP);
         const realId = existing ? (existing['.id'] || existing.id || existing.name || existing._detectedId) : null;
 
+        // Definimos los datos base que debe tener la cola
+        const queueData = {
+            name: `IP_${cleanIP}`,
+            target: `${cleanIP}/32`,
+            comment: (shouldBeActive ? 'REDUCIDO: ' : 'ACTIVO: ') + `${clientName} - ${now}`
+        };
+
         if (shouldBeActive) {
             // 🔴 MODO REDUCIR (Limitar a 1k/1k)
-            const queueData = {
-                name: `IP_${cleanIP}`,
-                target: `${cleanIP}/32`,
-                "max-limit": "1k/1k",
-                comment: `REDUCIDO: ${clientName} - ${now}`
-            };
+            queueData["max-limit"] = "1k/1k";
+            queueData.disabled = "no";
 
             if (realId) {
-                console.log(`[ handleQueue ] REDUCIENDO COLA EXISTENTE ID: ${realId}`);
+                console.log(`[ handleQueue ] ACTUALIZANDO A REDUCIDA ID: ${realId}`);
                 await queueMenu.set({ ".id": realId, ...queueData });
                 await queueMenu.enable({ ".id": realId });
             } else {
@@ -105,19 +108,19 @@ async function handleQueue(api, ip, clientName, shouldBeActive) {
             return { success: true, message: 'Servicio reducido (1k/1k)' };
 
         } else {
-            // 🟢 MODO ACTIVAR (Libre navegación)
+            // 🟢 MODO ACTIVAR (Libre navegación, pero dejamos la cola creada y deshabilitada)
+            queueData["max-limit"] = "100M/100M"; // Valor figurativo
+            queueData.disabled = "yes";
+
             if (realId) {
-                console.log(`[ handleQueue ] ACTIVANDO (DESHABILITANDO COLA) ID: ${realId}`);
-                await queueMenu.set({
-                    ".id": realId,
-                    comment: `ACTIVO: ${clientName} - ${now}`
-                });
+                console.log(`[ handleQueue ] ACTUALIZANDO A ACTIVA (DESHABILITADA) ID: ${realId}`);
+                await queueMenu.set({ ".id": realId, ...queueData });
                 await queueMenu.disable({ ".id": realId });
-                return { success: true, message: 'Servicio activado (cola desactivada)' };
+            } else {
+                console.log(`[ handleQueue ] CREANDO COLA ACTIVA (DESHABILITADA): ${queueData.name}`);
+                await queueMenu.add(queueData);
             }
-            
-            console.log(`[ handleQueue ] No hay cola para desactivar. Cliente ya libre.`);
-            return { success: true, message: 'Cliente ya navega libre' };
+            return { success: true, message: 'Servicio activado (cola creada y desactivada)' };
         }
     } catch (err) {
         const msg = (err.message || '').toUpperCase();
@@ -288,19 +291,27 @@ export async function syncClientsWithMikrotik(config, clients, morosos, clean = 
                         actions.push(`➕ ${cleanIP} creado y limitado`);
                     }
                 }
-                // 🟢 ACTIVO → NO DEBE LIMITAR (Deshabilitamos la cola si existe, o garantizamos que esté libre)
+                // 🟢 ACTIVO → NAVEGACIÓN LIBRE (dejamos la cola desactivada pero creada)
                 else {
+                    const queueData = {
+                        name: `IP_${cleanIP}`,
+                        target: target,
+                        "max-limit": "100M/100M",
+                        disabled: "yes"
+                    };
+
+                    if (!clean) {
+                        queueData.comment = `SYNC: ACTIVO | ${new Date().toLocaleDateString()}`;
+                    } else {
+                        queueData.comment = "";
+                    }
+
                     if (existing && realId) {
-                        // Si existe, la deshabilitamos para dar navegación libre
-                        const updateData = { disabled: "yes" };
-                        if (!clean) {
-                            updateData.comment = `SYNC: ACTIVO | ${new Date().toLocaleDateString()}`;
-                        } else {
-                            updateData.comment = ""; // Sin comentarios
-                        }
-                        
-                        await queueMenu.set({ ".id": realId, ...updateData });
-                        actions.push(`🟢 ${cleanIP} liberado`);
+                        await queueMenu.set({ ".id": realId, ...queueData });
+                        actions.push(`🟢 ${cleanIP} actualizado (libre)`);
+                    } else {
+                        await queueMenu.add(queueData);
+                        actions.push(`➕ ${cleanIP} creado (libre)`);
                     }
                 }
             } catch (err) {
