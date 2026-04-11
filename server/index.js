@@ -46,17 +46,8 @@ app.post('/api/mikrotik/sync', async (req, res) => {
     }
 });
 
-// CONFIGURACIÓN DE CORS
-app.use(cors({
-    origin: [
-        'https://interred-1.onrender.com',
-        'http://localhost:5173'
-    ],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true
-}));
-
-app.options('(.*)', cors());
+app.use(cors());
+app.options('/*', cors());
 app.use(express.json());
 
 // ---- Health Check ----

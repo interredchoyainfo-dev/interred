@@ -30,25 +30,25 @@ async function withMikrotik(config, callback) {
     }
 }
 
-// 🔍 Función para ubicar la queue exacta del cliente por IP
-async function findExactQueueByIp(queueMenu, ip) {
+async function findQueue(queueMenu, ip) {
     const cleanIP = ip.split('/')[0].trim();
     const targetExact = `${cleanIP}/32`;
+    const name = `IP_${cleanIP}`;
 
     let queues = [];
     try {
         queues = await queueMenu.get();
+        if (!queues) return null;
     } catch { return null; }
 
-    if (!queues || queues.length === 0) return null;
-
     return queues.find(q => {
-        if (q.dynamic === 'true' || q.dynamic === true) return false;
-
         let qTarget = (q.target || '').trim();
         if (!qTarget.includes('/')) qTarget = `${qTarget}/32`;
 
-        return qTarget === targetExact;
+        return (
+            qTarget === targetExact ||
+            q.name === name
+        );
     });
 }
 
@@ -56,9 +56,7 @@ async function findExactQueueByIp(queueMenu, ip) {
 async function enforceQueueState(api, ip, clientName, isReducing) {
     const queueMenu = api.menu('/queue/simple');
     const cleanIP = ip.split('/')[0].trim();
-    const target = `${cleanIP}/32`;
-
-    const existing = await findExactQueueByIp(queueMenu, cleanIP);
+    const existing = await findQueue(queueMenu, cleanIP);
 
     // 🔴 REDUCIR
     if (isReducing) {
@@ -68,28 +66,24 @@ async function enforceQueueState(api, ip, clientName, isReducing) {
                 "max-limit": "1k/1k"
             });
             await queueMenu.enable({ ".id": existing['.id'] });
-            return { success: true, message: "Reducido OK" };
+            return { success: true };
         }
 
         await queueMenu.add({
             name: `IP_${cleanIP}`,
-            target: target,
+            target: `${cleanIP}/32`,
             "max-limit": "1k/1k"
         });
-        return { success: true, message: "Reducido (creado)" };
+        return { success: true };
     }
 
     // 🟢 ACTIVAR
     if (!isReducing) {
         if (existing) {
-            await queueMenu.set({
-                ".id": existing['.id'],
-                "max-limit": "0/0"
-            });
             await queueMenu.disable({ ".id": existing['.id'] });
-            return { success: true, message: "Activado OK" };
+            return { success: true };
         }
-        return { success: true, message: "Sin queue (ya activo)" };
+        return { success: true };
     }
 }
 
