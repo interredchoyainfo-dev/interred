@@ -102,19 +102,20 @@ async function handleQueue(api, ip, clientName, shouldBeActive) {
 
         // Limpiar nombre del cliente para que sea compatible con MikroTik
         const safeName = (clientName || "Cliente").toUpperCase().replace(/[^A-Z0-9]/g, '_');
-        const finalName = `IP_${cleanIP}_${safeName}`;
+        const finalName = safeName;
 
-        // Definimos los datos base que debe tener la cola (SIEMPRE 1k/1k según pedido)
+        // Definimos los datos base
         const queueData = {
             name: finalName,
             target: `${cleanIP}/32`,
             "max-limit": "1k/1k",
-            comment: "" // Sin comentarios
+            comment: ""
         };
 
         if (shouldBeActive) {
-            // 🔴 MODO REDUCIR (Habilitar cola)
+            // 🔴 MODO REDUCIR (Suspendido por deuda)
             queueData.disabled = "no";
+            queueData.comment = `REDUCIDO: ${now}`;
 
             if (realId) {
                 console.log(`[ handleQueue ] ACTUALIZANDO A REDUCIDA ID: ${realId}`);
@@ -127,8 +128,9 @@ async function handleQueue(api, ip, clientName, shouldBeActive) {
             return { success: true, message: 'Servicio reducido (1k/1k)' };
 
         } else {
-            // 🟢 MODO ACTIVAR (Deshabilitar cola para libre navegación)
+            // 🟢 MODO ACTIVAR (Libre navegación)
             queueData.disabled = "yes";
+            queueData.comment = ""; // Limpio en activo
 
             if (realId) {
                 console.log(`[ handleQueue ] ACTUALIZANDO A ACTIVA (DESHABILITADA) ID: ${realId}`);
@@ -289,7 +291,7 @@ export async function syncClientsWithMikrotik(config, clients, morosos, clean = 
                 const realId = existing ? (existing['.id'] || existing.id || existing.name) : null;
 
                 const safeName = (client.nombre || "Cliente").toUpperCase().replace(/[^A-Z0-9]/g, '_');
-                const finalName = `IP_${cleanIP}_${safeName}`;
+                const finalName = safeName;
 
                 // 🔴 MOROSO → DEBE TENER QUEUE ACTIVA (Limitada)
                 if (isMoroso) {
@@ -298,7 +300,7 @@ export async function syncClientsWithMikrotik(config, clients, morosos, clean = 
                         target: target,
                         "max-limit": "1k/1k",
                         disabled: "no",
-                        comment: ""
+                        comment: `REDUCIDO: ${new Date().toLocaleString('es-AR')}`
                     };
 
                     if (existing && realId) {
