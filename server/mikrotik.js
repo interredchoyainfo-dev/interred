@@ -195,6 +195,13 @@ export async function suspendQueueByName(config, name) {
 export async function activateQueueByName(config, name) {
     return { success: false, message: 'No implementado' };
 }
+export async function updateClientQueue(config, ip, clientName, action) {
+    if (action === 'suspend' || action === 'reduce' || action === 'enable') {
+        return reduceClient(config, ip, clientName);
+    } else {
+        return activateClient(config, ip, clientName);
+    }
+}
 export async function syncClientsWithMikrotik(config, clients, morosos) {
     return withMikrotik(config, async (api) => {
         const queueMenu = api.menu('/queue/simple');
