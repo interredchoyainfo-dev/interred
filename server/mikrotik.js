@@ -8,6 +8,7 @@ function isValidIP(ip) {
  * Connects to MikroTik and executes a callback with the API handle.
  */
 async function withMikrotik(config, callback) {
+    console.log(`[withMikrotik] Intentando conectar a ${config.host} como ${config.user}...`);
     const api = new RouterOSClient({
         host: config.host,
         port: config.port || 8729,
@@ -38,35 +39,34 @@ async function withMikrotik(config, callback) {
 
 async function findQueue(queueMenu, ip) {
     const cleanIP = ip.split('/')[0].trim();
-    const nameTarget = `IP_${cleanIP}`.toUpperCase();
+    const nameTarget = `IP_${cleanIP}`;
 
-    let queues = [];
+    console.log(`[ findQueue ] Buscando nativamente: target=${cleanIP}/32 o name=${nameTarget}`);
+
     try {
-        queues = await queueMenu.get();
-        if (!queues) return null;
-    } catch (e) { 
-        console.error("❌ Error MikroTik get queues:", e.message);
-        return null; 
-    }
+        // Intentamos buscar por target primero
+        let results = await queueMenu.get({
+            "?target": `${cleanIP}/32`
+        });
 
-    console.log(`[ findQueue ] Buscando IP: ${cleanIP} en ${queues.length} colas...`);
+        // Si no hay resultados, intentamos por nombre
+        if (!results || results.length === 0) {
+            results = await queueMenu.get({
+                "?name": nameTarget
+            });
+        }
 
-    for(const q of queues) {
-        const qTarget = (q.target || '').trim();
-        const qName = (q.name || '').toUpperCase();
-
-        // Búsqueda flexible: ¿El target contiene la IP? o ¿El nombre coincide?
-        const matchIp = qTarget.includes(cleanIP);
-        const matchName = qName === nameTarget || qName.includes(cleanIP);
-
-        if (matchIp || matchName) {
+        if (results && results.length > 0) {
+            const q = results[0];
             const realId = q['.id'] || q.id || q.name;
-            console.log(`[ findQueue ] ✅ MATCH: ${q.name} | ID: ${realId} | Target: ${qTarget}`);
+            console.log(`[ findQueue ] ✅ ENCONTRADA: ${q.name} | ID: ${realId}`);
             return { ...q, "_detectedId": realId };
         }
+    } catch (e) { 
+        console.error("❌ Error en búsqueda nativa MikroTik:", e.message);
     }
     
-    console.log(`[ findQueue ] ⚠️ No se encontró cola para IP ${cleanIP}`);
+    console.log(`[ findQueue ] ⚠️ No se encontró ninguna cola para ${cleanIP}`);
     return null;
 }
 
@@ -265,12 +265,12 @@ export async function syncClientsWithMikrotik(config, clients, morosos) {
                         name: `IP_${cleanIP}`,
                         target: target,
                         "max-limit": "1k/1k",
-                        comment: `SYNC: MOROSO | ${new Date().toLocaleDateString()}`
+                        comment: `SYNC: MOROSO | ${new Date().toLocaleDateString()}`,
+                        disabled: "no"
                     };
 
                     if (existing && realId) {
                         await queueMenu.set({ ".id": realId, ...queueData });
-                        await queueMenu.enable({ ".id": realId });
                         actions.push(`✔ ${cleanIP} limitado`);
                     } else {
                         await queueMenu.add(queueData);
@@ -280,7 +280,7 @@ export async function syncClientsWithMikrotik(config, clients, morosos) {
                 // 🟢 ACTIVO → NO DEBE LIMITAR (Deshabilitamos la cola si existe)
                 else {
                     if (existing && realId) {
-                        await queueMenu.disable({ ".id": realId });
+                        await queueMenu.set({ ".id": realId, disabled: "yes" });
                         actions.push(`🟢 ${cleanIP} liberado`);
                     }
                 }

@@ -42,11 +42,23 @@ async function fetchWithTimeout(url, options = {}) {
 
 function getMikrotikConfig() {
     const settings = DB.getSettings();
+    const activeRouter = settings.routers ? settings.routers[settings.activeRouterIndex || 0] : null;
+    
+    if (!activeRouter) {
+        return {
+            host: settings.mikrotikHost || '181.209.118.162',
+            port: parseInt(settings.mikrotikPort || 8729),
+            user: settings.mikrotikUser || 'interred_api',
+            password: settings.mikrotikPassword || 'InterRed2026',
+            ssl: true
+        };
+    }
+
     return {
-        host: settings.mikrotikHost || '181.209.118.162',
-        port: 8729,
-        user: settings.mikrotikUser || 'interred_api',
-        password: settings.mikrotikPassword || 'InterRed2026',
+        host: activeRouter.host,
+        port: parseInt(activeRouter.port || 8729),
+        user: activeRouter.user,
+        password: activeRouter.password,
         ssl: true
     };
 }
