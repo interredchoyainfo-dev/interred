@@ -91,7 +91,7 @@ async function findQueue(queueMenu, ip) {
 
 async function handleQueue(api, ip, clientName, shouldBeActive) {
     const cleanIP = ip.split('/')[0].trim();
-    const now = new Date().toLocaleString('es-AR', { hour12: false });
+    const now = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour12: false });
     
     console.log(`[ handleQueue ] INICIO: ${clientName} (${cleanIP}) | Modo: ${shouldBeActive ? 'REDUCIR' : 'ACTIVAR'}`);
     
@@ -290,7 +290,8 @@ export async function syncClientsWithMikrotik(config, clients, morosos, clean = 
                 const existing = existingArr[0];
                 const realId = existing ? (existing['.id'] || existing.id || existing.name) : null;
 
-                const safeName = (client.nombre || "Cliente").toUpperCase().replace(/[^A-Z0-9]/g, '_');
+                const fullName = `${client.nombre || ''} ${client.apellido || ''}`.trim() || 'Cliente';
+                const safeName = fullName.toUpperCase().replace(/[^A-Z0-9]/g, '_');
                 const finalName = safeName;
 
                 // 🔴 MOROSO → DEBE TENER QUEUE ACTIVA (Limitada)
@@ -300,7 +301,7 @@ export async function syncClientsWithMikrotik(config, clients, morosos, clean = 
                         target: target,
                         "max-limit": "1k/1k",
                         disabled: "no",
-                        comment: `REDUCIDO: ${new Date().toLocaleString('es-AR')}`
+                        comment: `REDUCIDO: ${new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour12: false })}`
                     };
 
                     if (existing && realId) {
