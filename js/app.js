@@ -1522,7 +1522,6 @@ const App = {
                     this.showToast(`🔴 Sistema MikroTik: ${exito} clientes reducidos automáticamente`, 'error');
                 }
                 
-                this.syncMikrotik(true); // Sync final de seguridad
                 this.refreshCurrentView();
             }
 
@@ -1552,8 +1551,6 @@ const App = {
             this.showToast(`❌ Error MikroTik: ${res?.message}`, 'error');
         }
 
-        this.syncMikrotik(true); // Sync en segundo plano
-
         this.showClientDetail(clientId);
         this.refreshCurrentView();
     },
@@ -1575,8 +1572,6 @@ const App = {
         } else {
             this.showToast(`❌ Error MikroTik: ${res?.message}`, 'error');
         }
-
-        this.syncMikrotik(true); // Sync en segundo plano
 
         this.showClientDetail(clientId);
         this.refreshCurrentView();
