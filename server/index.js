@@ -30,9 +30,18 @@ const CONFIG_PATH = path.join(__dirname, '..', 'data', 'site_config.json');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// CONFIGURACIÓN DE CORS GLOBAL (Debe ir antes de las rutas)
-app.use(cors());
-app.options(/.*/, cors());
+// CONFIGURACIÓN DE CORS MANUAL (Para máxima compatibilidad)
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, HEAD');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept');
+    
+    // Manejo inmediato de preflight
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    next();
+});
 app.use(express.json());
 
 // ---- SYNC ENDPOINT ----
