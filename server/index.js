@@ -42,9 +42,6 @@ app.use(cors({
 
 app.use(express.json());
 
-// Responder explícitamente a las peticiones OPTIONS (vital para evitar el error de los logs)
-app.options('(.*)', cors());
-
 // ---- SYNC ENDPOINT ----
 app.post('/api/mikrotik/sync', async (req, res) => {
     try {
