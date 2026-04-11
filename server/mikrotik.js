@@ -85,16 +85,20 @@ async function handleQueue(api, ip, clientName, shouldBeActive) {
         const existing = await findQueue(queueMenu, cleanIP);
         const realId = existing ? (existing['.id'] || existing.id || existing.name || existing._detectedId) : null;
 
-        // Definimos los datos base que debe tener la cola
+        // Limpiar nombre del cliente para que sea compatible con MikroTik
+        const safeName = (clientName || "Cliente").toUpperCase().replace(/[^A-Z0-9]/g, '_');
+        const finalName = `IP_${cleanIP}_${safeName}`;
+
+        // Definimos los datos base que debe tener la cola (SIEMPRE 1k/1k según pedido)
         const queueData = {
-            name: `IP_${cleanIP}`,
+            name: finalName,
             target: `${cleanIP}/32`,
+            "max-limit": "1k/1k",
             comment: (shouldBeActive ? 'REDUCIDO: ' : 'ACTIVO: ') + `${clientName} - ${now}`
         };
 
         if (shouldBeActive) {
-            // 🔴 MODO REDUCIR (Limitar a 1k/1k)
-            queueData["max-limit"] = "1k/1k";
+            // 🔴 MODO REDUCIR (Habilitar cola)
             queueData.disabled = "no";
 
             if (realId) {
@@ -108,8 +112,7 @@ async function handleQueue(api, ip, clientName, shouldBeActive) {
             return { success: true, message: 'Servicio reducido (1k/1k)' };
 
         } else {
-            // 🟢 MODO ACTIVAR (Libre navegación, pero dejamos la cola creada y deshabilitada)
-            queueData["max-limit"] = "100M/100M"; // Valor figurativo
+            // 🟢 MODO ACTIVAR (Deshabilitar cola para libre navegación)
             queueData.disabled = "yes";
 
             if (realId) {
@@ -270,10 +273,13 @@ export async function syncClientsWithMikrotik(config, clients, morosos, clean = 
                 const existing = existingArr[0];
                 const realId = existing ? (existing['.id'] || existing.id || existing.name) : null;
 
+                const safeName = (client.nombre || "Cliente").toUpperCase().replace(/[^A-Z0-9]/g, '_');
+                const finalName = `IP_${cleanIP}_${safeName}`;
+
                 // 🔴 MOROSO → DEBE TENER QUEUE ACTIVA (Limitada)
                 if (isMoroso) {
                     const queueData = {
-                        name: `IP_${cleanIP}`,
+                        name: finalName,
                         target: target,
                         "max-limit": "1k/1k",
                         disabled: "no"
@@ -285,18 +291,18 @@ export async function syncClientsWithMikrotik(config, clients, morosos, clean = 
 
                     if (existing && realId) {
                         await queueMenu.set({ ".id": realId, ...queueData });
-                        actions.push(`✔ ${cleanIP} limitado`);
+                        actions.push(`✔ ${client.nombre} limitado`);
                     } else {
                         await queueMenu.add(queueData);
-                        actions.push(`➕ ${cleanIP} creado y limitado`);
+                        actions.push(`➕ ${client.nombre} creado (moroso)`);
                     }
                 }
                 // 🟢 ACTIVO → NAVEGACIÓN LIBRE (dejamos la cola desactivada pero creada)
                 else {
                     const queueData = {
-                        name: `IP_${cleanIP}`,
+                        name: finalName,
                         target: target,
-                        "max-limit": "100M/100M",
+                        "max-limit": "1k/1k",
                         disabled: "yes"
                     };
 
@@ -308,10 +314,10 @@ export async function syncClientsWithMikrotik(config, clients, morosos, clean = 
 
                     if (existing && realId) {
                         await queueMenu.set({ ".id": realId, ...queueData });
-                        actions.push(`🟢 ${cleanIP} actualizado (libre)`);
+                        actions.push(`🟢 ${client.nombre} actualizado (libre)`);
                     } else {
                         await queueMenu.add(queueData);
-                        actions.push(`➕ ${cleanIP} creado (libre)`);
+                        actions.push(`➕ ${client.nombre} creado (libre)`);
                     }
                 }
             } catch (err) {
