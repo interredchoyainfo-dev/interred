@@ -19,12 +19,18 @@ async function withMikrotik(config, callback) {
         }
     });
 
+    // Importante: Catch de error para evitar que el proceso se muera (!falla crítica)
+    api.on('error', (err) => {
+        console.error('❌ [withMikrotik] Error de evento API:', err.message);
+    });
+
     try {
         const client = await api.connect();
         const result = await callback(client);
         await api.close();
         return result;
     } catch (error) {
+        console.error('❌ [withMikrotik] Excepción atrapada:', error.message);
         try { await api.close(); } catch {}
         return { success: false, message: error.message };
     }
@@ -54,12 +60,11 @@ async function findQueue(queueMenu, ip) {
         const matchName = qName === nameTarget;
 
         if (matchIp || matchName) {
-            // Detectar el ID real (algunas versiones usan .id, otras id, o el nombre sirve de alias)
-            const realId = q['.id'] || q.id || q.name;
-            console.log(`[ findQueue ] ✅ ENCONTRADA: ${q.name} | Target: ${q.target} | ID Detectado: ${realId}`);
+            // Log brutal para ver qué devuelve MikroTik realmente
+            console.log(`[ findQueue ] 🔍 DEBUG COLA OBJ:`, JSON.stringify(q));
             
-            // Log de depuración para ver todas las llaves si el ID sigue fallando
-            if (!realId) console.log("[ findQueue ] 🛠 LLAVES DISPONIBLES:", Object.keys(q));
+            const realId = q['.id'] || q.id || q.name;
+            console.log(`[ findQueue ] ✅ ENCONTRADA: ${q.name || 'Sin nombre'} | ID Detectado: ${realId}`);
             
             return { ...q, "_detectedId": realId };
         }
