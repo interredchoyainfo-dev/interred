@@ -94,6 +94,7 @@ async function handleQueue(api, ip, clientName, shouldBeActive) {
             if (existing && existing._detectedId) {
                 console.log(`[ handleQueue ] REDUCIENDO cola ID: ${existing._detectedId}`);
                 await queueMenu.set({ ".id": existing._detectedId, ...queueData });
+                await queueMenu.enable({ ".id": existing._detectedId }); // Forzar habilitación para aplicar límite
             } else {
                 console.log(`[ handleQueue ] CREANDO nueva cola reducida.`);
                 await queueMenu.add(queueData);
@@ -102,14 +103,13 @@ async function handleQueue(api, ip, clientName, shouldBeActive) {
         } else {
             // 🟢 MODO ACTIVO (Cola deshabilitada y comentario 'ACTIVO')
             if (existing && existing._detectedId) {
-                console.log(`[ handleQueue ] ACTIVANDO cola ID: ${existing._detectedId}`);
+                console.log(`[ handleQueue ] ACTIVANDO (DESHABILITANDO COLA) ID: ${existing._detectedId}`);
                 
-                // Realizamos el set atómico: comentario + deshabilitar
                 await queueMenu.set({
                     ".id": existing._detectedId,
-                    comment: `ACTIVO: ${clientName} - ${now}`,
-                    disabled: "yes" // Deshabilitar la cola = Activar navegación libre
+                    comment: `ACTIVO: ${clientName} - ${now}`
                 });
+                await queueMenu.disable({ ".id": existing._detectedId }); // Deshabilitar la cola = Activar navegación libre
                 
                 return { success: true, message: 'Servicio activado (cola desactivada)' };
             }
