@@ -32,7 +32,7 @@ async function withMikrotik(config, callback) {
 
 async function findQueue(queueMenu, ip) {
     const cleanIP = ip.split('/')[0].trim();
-    const targetExact = `${cleanIP}/32`;
+    const targets = [`${cleanIP}/32`, cleanIP]; // Probar ambos formatos
     const nameTarget = `IP_${cleanIP}`.toUpperCase();
 
     let queues = [];
@@ -40,23 +40,21 @@ async function findQueue(queueMenu, ip) {
         queues = await queueMenu.get();
         if (!queues) return null;
     } catch (e) { 
-        console.error("Error fetching queues:", e.message);
+        console.error("❌ Error MikroTik get queues:", e.message);
         return null; 
     }
 
-    return queues.find(q => {
-        // Normalizar target
-        let qTarget = (q.target || '').trim();
-        if (qTarget && !qTarget.includes('/')) qTarget = `${qTarget}/32`;
+    console.log(`[ findQueue ] Buscando IP: ${cleanIP} o Nombre: ${nameTarget} en ${queues.length} colas.`);
 
-        // Normalizar nombre
+    return queues.find(q => {
+        let qTarget = (q.target || '').trim();
         const qName = (q.name || '').toUpperCase();
 
-        const matchIp = qTarget === targetExact;
+        const matchIp = targets.includes(qTarget);
         const matchName = qName === nameTarget;
 
         if (matchIp || matchName) {
-            console.log(`[ findQueue ] MATCH FOUND: ${q.name} (IP: ${q.target})`);
+            console.log(`[ findQueue ] ✅ ENCONTRADA: ${q.name} | Target: ${q.target} | ID: ${q['.id']}`);
             return true;
         }
         return false;
@@ -65,43 +63,51 @@ async function findQueue(queueMenu, ip) {
 
 // 🛠️ Función unificada para gestionar el estado de la cola
 async function handleQueue(api, ip, clientName, shouldBeActive) {
+    console.log(`[ handleQueue ] INICIO - Cliente: ${clientName} | IP: ${ip} | Modo: ${shouldBeActive ? 'REDUCIR' : 'ACTIVAR'}`);
+    
     const queueMenu = api.menu('/queue/simple');
     const cleanIP = ip.split('/')[0].trim();
     const target = `${cleanIP}/32`;
     const now = new Date().toLocaleString('es-AR');
     
-    // Buscamos si ya existe
     const existing = await findQueue(queueMenu, cleanIP);
 
-    if (shouldBeActive) {
-        // 🔴 MODO REDUCIDO (La cola debe existir y estar ENABLED)
-        const queueData = {
-            name: `IP_${cleanIP}`,
-            target: target,
-            "max-limit": "1k/1k",
-            comment: `REDUCIDO: ${clientName} - ${now}`
-        };
+    try {
+        if (shouldBeActive) {
+            // 🔴 MODO REDUCIDO
+            const queueData = {
+                name: `IP_${cleanIP}`,
+                target: target,
+                "max-limit": "1k/1k",
+                comment: `REDUCIDO: ${clientName} - ${now}`
+            };
 
-        if (existing) {
-            await queueMenu.set({ ".id": existing['.id'], ...queueData });
-            await queueMenu.enable({ ".id": existing['.id'] });
+            if (existing) {
+                console.log(`[ handleQueue ] Actualizando cola existente ID: ${existing['.id']}`);
+                await queueMenu.set({ ".id": existing['.id'], ...queueData });
+                await queueMenu.enable({ ".id": existing['.id'] });
+            } else {
+                console.log(`[ handleQueue ] Creando nueva cola.`);
+                await queueMenu.add(queueData);
+            }
+            return { success: true, message: 'Servicio reducido (1k/1k)' };
         } else {
-            await queueMenu.add(queueData);
+            // 🟢 MODO ACTIVO
+            if (existing) {
+                console.log(`[ handleQueue ] Desactivando cola ID: ${existing['.id']}`);
+                await queueMenu.set({
+                    ".id": existing['.id'],
+                    comment: `ACTIVO: ${clientName} - ${now}`
+                });
+                await queueMenu.disable({ ".id": existing['.id'] });
+                return { success: true, message: 'Servicio liberado' };
+            }
+            console.log(`[ handleQueue ] No hay cola que desactivar. Cliente ya libre.`);
+            return { success: true, message: 'Cliente ya navega libre (sin cola)' };
         }
-        return { success: true, message: 'Servicio reducido (1k/1k)' };
-    } else {
-        // 🟢 MODO ACTIVO (La cola debe estar DISABLED para no limitar)
-        if (existing) {
-            await queueMenu.set({
-                ".id": existing['.id'],
-                comment: `ACTIVO: ${clientName} - ${now}`
-            });
-            await queueMenu.disable({ ".id": existing['.id'] });
-            return { success: true, message: 'Servicio liberado' };
-        }
-        // Si no existe y el cliente está activo, no hace falta crearla 
-        // porque el cliente ya navega libre sin cola.
-        return { success: true, message: 'Cliente ya navega libre (sin cola)' };
+    } catch (err) {
+        console.error(`[ handleQueue ] ❌ ERROR OPERACIÓN:`, err.message);
+        throw err; // withMikrotik lo capturará
     }
 }
 

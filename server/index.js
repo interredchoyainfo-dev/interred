@@ -4,7 +4,7 @@
    ======================================== */
 
 import express from 'express';
-import cors from 'cors';
+// import cors from 'cors'; // Eliminado por redundancia con middleware manual
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -125,38 +125,13 @@ app.post('/api/mikrotik/test', async (req, res) => {
     }
 });
 
-// ---- Suspend Client (ENABLE simple queue limit) ----
-app.post('/suspend', async (req, res) => {
-    const { config, ip, clientName } = req.body;
-    if (!config || !ip) {
-        return res.status(400).json({ success: false, message: 'Faltan datos: config, ip' });
-    }
-    try {
-        const result = await reduceClient(config, ip, clientName);
-        console.log(`🔴 Suspendido en Mikrotik (Port 3000): ${ip}`);
-        res.json(result);
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message, ip });
-    }
-});
+// Aliases for retro-compatibility
+app.post('/suspend', (req, res) => res.redirect(307, '/api/queue/enable'));
+app.post('/activate', (req, res) => res.redirect(307, '/api/queue/disable'));
+app.post('/api/mikrotik/suspend', (req, res) => res.redirect(307, '/api/queue/enable'));
+app.post('/api/mikrotik/activate', (req, res) => res.redirect(307, '/api/queue/disable'));
 
-// ---- Activate Client (DISABLE simple queue limit) ----
-app.post('/activate', async (req, res) => {
-    const { config, ip } = req.body;
-    if (!config || !ip) {
-        return res.status(400).json({ success: false, message: 'Faltan datos: config, ip' });
-    }
-    try {
-        const result = await activateClient(config, ip);
-        console.log(`✅ Activado en Mikrotik (Port 3000): ${ip}`);
-        res.json(result);
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message, ip });
-    }
-});
-
-// ---- NAME-BASED QUEUE CONTROL (New) ----
-
+// ACTUAL IMPLEMENTATIONS
 app.post('/api/mikrotik/update-queue', async (req, res) => {
     const { config, clientIp, clientName, action } = req.body;
     if (!config || !clientIp || !action) {
@@ -175,22 +150,11 @@ app.post('/api/mikrotik/update-queue', async (req, res) => {
 app.post('/api/queue/enable', async (req, res) => {
     try {
         const { config, ip, clientName } = req.body;
-
-        if (!config || !ip) {
-            return res.status(400).json({
-                success: false,
-                message: 'Faltan datos (config/ip)'
-            });
-        }
-
+        if (!config || !ip) return res.status(400).json({ success: false, message: 'Faltan datos' });
         const result = await reduceClient(config, ip, clientName);
         res.json(result);
-
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        res.status(500).json({ success: false, message: error.message });
     }
 });
 
@@ -198,25 +162,13 @@ app.post('/api/queue/enable', async (req, res) => {
 app.post('/api/queue/disable', async (req, res) => {
     try {
         const { config, ip, clientName } = req.body;
-
-        if (!config || !ip) {
-            return res.status(400).json({
-                success: false,
-                message: 'Faltan datos (config/ip)'
-            });
-        }
-
+        if (!config || !ip) return res.status(400).json({ success: false, message: 'Faltan datos' });
         const result = await activateClient(config, ip, clientName);
         res.json(result);
-
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        res.status(500).json({ success: false, message: error.message });
     }
 });
-
 
 app.post('/api/queues', async (req, res) => {
     const { config } = req.body;
@@ -229,9 +181,10 @@ app.post('/api/queues', async (req, res) => {
     }
 });
 
-// Aliases for retro-compatibility if needed
-app.post('/api/mikrotik/suspend', (req, res) => res.redirect(307, '/suspend'));
-app.post('/api/mikrotik/activate', (req, res) => res.redirect(307, '/activate'));
+// Global Rejection Handler
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
 
 // ---- Test MikroTik Connection ----
