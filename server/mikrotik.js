@@ -33,22 +33,33 @@ async function withMikrotik(config, callback) {
 async function findQueue(queueMenu, ip) {
     const cleanIP = ip.split('/')[0].trim();
     const targetExact = `${cleanIP}/32`;
-    const name = `IP_${cleanIP}`;
+    const nameTarget = `IP_${cleanIP}`.toUpperCase();
 
     let queues = [];
     try {
         queues = await queueMenu.get();
         if (!queues) return null;
-    } catch { return null; }
+    } catch (e) { 
+        console.error("Error fetching queues:", e.message);
+        return null; 
+    }
 
     return queues.find(q => {
+        // Normalizar target
         let qTarget = (q.target || '').trim();
-        if (!qTarget.includes('/')) qTarget = `${qTarget}/32`;
+        if (qTarget && !qTarget.includes('/')) qTarget = `${qTarget}/32`;
 
-        return (
-            qTarget === targetExact ||
-            q.name === name
-        );
+        // Normalizar nombre
+        const qName = (q.name || '').toUpperCase();
+
+        const matchIp = qTarget === targetExact;
+        const matchName = qName === nameTarget;
+
+        if (matchIp || matchName) {
+            console.log(`[ findQueue ] MATCH FOUND: ${q.name} (IP: ${q.target})`);
+            return true;
+        }
+        return false;
     });
 }
 

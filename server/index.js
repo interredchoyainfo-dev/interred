@@ -30,7 +30,10 @@ const CONFIG_PATH = path.join(__dirname, '..', 'data', 'site_config.json');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ... (existing cors and middleware) ...
+// CONFIGURACIÓN DE CORS GLOBAL (Debe ir antes de las rutas)
+app.use(cors());
+app.options('/*', cors());
+app.use(express.json());
 
 // ---- SYNC ENDPOINT ----
 app.post('/api/mikrotik/sync', async (req, res) => {
@@ -45,10 +48,6 @@ app.post('/api/mikrotik/sync', async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
-
-app.use(cors());
-app.options('/*', cors());
-app.use(express.json());
 
 // ---- Health Check ----
 app.get('/api/health', (req, res) => {
