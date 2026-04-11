@@ -297,15 +297,6 @@ export async function syncClientsWithMikrotik(config, clients, morosos, clean = 
                         name: finalName,
                         target: target,
                         "max-limit": "1k/1k",
-                        disabled: "no"
-                    };
-                    
-                // 🔴 MOROSO → DEBE TENER QUEUE ACTIVA (Limitada)
-                if (isMoroso) {
-                    const queueData = {
-                        name: finalName,
-                        target: target,
-                        "max-limit": "1k/1k",
                         disabled: "no",
                         comment: ""
                     };
