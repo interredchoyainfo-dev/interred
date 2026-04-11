@@ -45,26 +45,41 @@ async function findQueue(queueMenu, ip) {
 
     try {
         // Intentamos buscar por target (lo más fiable)
-        // Probamos con y sin /32
         const targetsToTry = [`${cleanIP}/32`, cleanIP];
         
         for (const target of targetsToTry) {
-            const results = await queueMenu.get({ "?target": target });
-            if (results && results.length > 0) {
-                const q = results[0];
-                const realId = q['.id'] || q.id || q.name;
-                console.log(`[ findQueue ] ✅ ENCONTRADA por Target: ${q.name}`);
-                return { ...q, "_detectedId": realId };
+            try {
+                const results = await queueMenu.get({ "?target": target });
+                if (results && results.length > 0) {
+                    const q = results[0];
+                    const realId = q['.id'] || q.id || q.name;
+                    console.log(`[ findQueue ] ✅ ENCONTRADA por Target: ${q.name}`);
+                    return { ...q, "_detectedId": realId };
+                }
+            } catch (innerErr) {
+                if (innerErr.message.includes('!empty')) {
+                    console.log(`[ findQueue ] ⚠️ MikroTik v7 Catch (!empty) durante búsqueda de target.`);
+                } else {
+                    throw innerErr;
+                }
             }
         }
 
         // Si no, por nombre
-        const resultsByName = await queueMenu.get({ "?name": nameTarget });
-        if (resultsByName && resultsByName.length > 0) {
-            const q = resultsByName[0];
-            const realId = q['.id'] || q.id || q.name;
-            console.log(`[ findQueue ] ✅ ENCONTRADA por Nombre: ${q.name}`);
-            return { ...q, "_detectedId": realId };
+        try {
+            const resultsByName = await queueMenu.get({ "?name": nameTarget });
+            if (resultsByName && resultsByName.length > 0) {
+                const q = resultsByName[0];
+                const realId = q['.id'] || q.id || q.name;
+                console.log(`[ findQueue ] ✅ ENCONTRADA por Nombre: ${q.name}`);
+                return { ...q, "_detectedId": realId };
+            }
+        } catch (innerErr) {
+            if (innerErr.message.includes('!empty')) {
+                console.log(`[ findQueue ] ⚠️ MikroTik v7 Catch (!empty) durante búsqueda de nombre.`);
+            } else {
+                throw innerErr;
+            }
         }
     } catch (e) { 
         console.error("❌ Error en búsqueda MikroTik:", e.message);
@@ -94,7 +109,7 @@ async function handleQueue(api, ip, clientName, shouldBeActive) {
             name: finalName,
             target: `${cleanIP}/32`,
             "max-limit": "1k/1k",
-            comment: (shouldBeActive ? 'REDUCIDO: ' : 'ACTIVO: ') + `${clientName} - ${now}`
+            comment: "" // Sin comentarios
         };
 
         if (shouldBeActive) {
@@ -285,9 +300,15 @@ export async function syncClientsWithMikrotik(config, clients, morosos, clean = 
                         disabled: "no"
                     };
                     
-                    if (!clean) {
-                        queueData.comment = `SYNC: MOROSO | ${new Date().toLocaleDateString()}`;
-                    }
+                // 🔴 MOROSO → DEBE TENER QUEUE ACTIVA (Limitada)
+                if (isMoroso) {
+                    const queueData = {
+                        name: finalName,
+                        target: target,
+                        "max-limit": "1k/1k",
+                        disabled: "no",
+                        comment: ""
+                    };
 
                     if (existing && realId) {
                         await queueMenu.set({ ".id": realId, ...queueData });
@@ -303,14 +324,9 @@ export async function syncClientsWithMikrotik(config, clients, morosos, clean = 
                         name: finalName,
                         target: target,
                         "max-limit": "1k/1k",
-                        disabled: "yes"
+                        disabled: "yes",
+                        comment: ""
                     };
-
-                    if (!clean) {
-                        queueData.comment = `SYNC: ACTIVO | ${new Date().toLocaleDateString()}`;
-                    } else {
-                        queueData.comment = "";
-                    }
 
                     if (existing && realId) {
                         await queueMenu.set({ ".id": realId, ...queueData });
