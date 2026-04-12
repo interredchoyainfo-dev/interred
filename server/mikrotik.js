@@ -107,58 +107,60 @@ async function handleQueue(api, ip, clientName, shouldBeReduced) {
 
     try {
         const queueMenu = api.menu('/queue/simple');
-        const existing = await findQueue(queueMenu, cleanIP);
-        const realId = existing ? (existing['.id'] || existing.id || existing.name || existing._detectedId) : null;
-
         const finalName = safeName(clientName);
+        
+        // 1. Intentar encontrar por IP (Target)
+        let existing = await findQueue(queueMenu, cleanIP);
+        let realId = existing ? (existing['.id'] || existing.id || existing.name) : null;
+
+        // 2. Si no se encontró por IP, intentar encontrar por NOMBRE (para evitar conflictos de "already have such name")
+        if (!realId && finalName) {
+            try {
+                const byName = await queueMenu.get({ '?name': finalName });
+                if (byName && byName.length > 0) {
+                    existing = byName[0];
+                    realId = existing['.id'] || existing.id || existing.name;
+                    console.log(`[handleQueue] Encontrado por coincidencia de nombre: ${finalName}`);
+                }
+            } catch (nameErr) {
+                console.warn('[handleQueue] Error buscando por nombre:', nameErr.message);
+            }
+        }
 
         const queueData = {
             name: finalName,
             target: `${cleanIP}/32`,
-            'max-limit': '1k/1k',
-            comment: ''
+            'max-limit': shouldBeReduced ? '10k/10k' : '0/0', // 10k es más estable que 1k
+            disabled: shouldBeReduced ? 'no' : 'yes',
+            comment: shouldBeReduced ? `REDUCIDO: ${now}` : ''
         };
 
-        if (shouldBeReduced) {
-            // 🔴 REDUCIR — habilitar la cola limitadora
-            queueData.disabled = 'no';
-            queueData.comment = `REDUCIDO: ${now}`;
-
-            if (realId) {
-                console.log(`[handleQueue] Actualizando a REDUCIDA id: ${realId}`);
-                await queueMenu.set({ '.id': realId, ...queueData });
-                // BUG #11: NO se llama .enable() porque disabled:'no' ya lo activa
-            } else {
-                console.log(`[handleQueue] Creando nueva cola REDUCIDA: ${finalName}`);
-                await queueMenu.add(queueData);
-            }
-            return { success: true, message: 'Servicio reducido (1k/1k)' };
-
+        if (realId) {
+            console.log(`[handleQueue] Actualizando cola existente (id: ${realId})`);
+            await queueMenu.set({ '.id': realId, ...queueData });
         } else {
-            // 🟢 ACTIVAR — deshabilitar la cola para navegación libre
-            queueData.disabled = 'yes';
-            queueData.comment = '';
-
-            if (realId) {
-                console.log(`[handleQueue] Actualizando a ACTIVA (cola deshabilitada) id: ${realId}`);
-                await queueMenu.set({ '.id': realId, ...queueData });
-                // BUG #11: NO se llama .disable() porque disabled:'yes' ya lo desactiva
-            } else {
-                console.log(`[handleQueue] Creando cola ACTIVA (deshabilitada): ${finalName}`);
-                await queueMenu.add(queueData);
-            }
-            return { success: true, message: 'Servicio activado (cola deshabilitada)' };
+            console.log(`[handleQueue] Creando nueva cola: ${finalName}`);
+            await queueMenu.add(queueData);
         }
+
+        return { 
+            success: true, 
+            message: shouldBeReduced ? 'Servicio reducido correctamente' : 'Servicio activado correctamente' 
+        };
 
     } catch (err) {
         const msg = (err.message || '').toUpperCase();
-        if (msg.includes('!EMPTY') || msg.includes('UNKNOWNREPLY') || msg.includes('TRAP') || msg.includes('ALREADY HAVE SUCH NAME')) {
-            console.log(`[handleQueue] ⚠️ MikroTik bypass: ${err.message}`);
-            return { 
-                success: true, 
-                message: shouldBeReduced ? 'Servicio reducido (1k/1k)' : 'Servicio activado (cola deshabilitada)' 
-            };
+        
+        // Manejo de errores específicos de MikroTik v7 o duplicados
+        if (msg.includes('ALREADY HAVE SUCH NAME')) {
+             return { success: false, message: `Error: Ya existe una cola con el nombre "${clientName}" pero vinculada a otro registro.` };
         }
+        
+        if (msg.includes('!EMPTY') || msg.includes('UNKNOWNREPLY') || msg.includes('TRAP')) {
+            console.log(`[handleQueue] ⚠️ Bypass por error de respuesta MikroTik: ${err.message}`);
+            return { success: true, message: 'Operación completada (MikroTik v7 bypass)' };
+        }
+
         console.error('[handleQueue] ❌ ERROR:', err.message);
         return { success: false, message: `Error MikroTik: ${err.message}` };
     }
