@@ -140,25 +140,42 @@
     <!-- Visual Anchor: Solid Brand Line -->
     <div class="fixed bottom-0 left-0 w-full h-1 bg-primary"></div>
 
-    <script>
-        document.getElementById('login-form').addEventListener('submit', (e) => {
+    <script type="module">
+        import { loginBackend } from './js/mikrotikService.js';
+
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const user = document.getElementById('username').value;
             const pass = document.getElementById('password').value;
             const errorAlert = document.getElementById('error-alert');
 
-            // Credenciales indicadas: Admin / Giolezana19
-            if (user === 'Admin' && pass === 'Giolezana19') {
-                const session = {
-                    auth: true,
-                    time: Date.now(),
-                    key: btoa("Admin")
-                };
-                sessionStorage.setItem('auth', JSON.stringify(session));
-                window.location.href = 'dashboard.html';
-            } else {
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = 'VERIFICANDO...';
+            submitBtn.disabled = true;
+
+            try {
+                const result = await loginBackend(user, pass);
+                
+                if (result.success) {
+                    const session = {
+                        auth: true,
+                        time: Date.now()
+                    };
+                    sessionStorage.setItem('auth', JSON.stringify(session));
+                    window.location.href = 'dashboard.html';
+                } else {
+                    errorAlert.textContent = result.message || 'Datos incorrectos. Intente de nuevo.';
+                    errorAlert.classList.remove('hidden');
+                    setTimeout(() => errorAlert.classList.add('hidden'), 3000);
+                }
+            } catch (error) {
+                errorAlert.textContent = 'Error de conexión con el servidor.';
                 errorAlert.classList.remove('hidden');
                 setTimeout(() => errorAlert.classList.add('hidden'), 3000);
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
             }
         });
     </script>
