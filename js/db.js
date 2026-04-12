@@ -17,53 +17,19 @@ import {
     where,
     writeBatch
 } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+import { 
+    safeArray, 
+    safeObject, 
+    normalizeCliente, 
+    clienteExiste, 
+    safeLocalGet, 
+    safeLocalSet,
+    generateId 
+} from './utils.js';
 
 // ========================================
 // HELPERS & HARDENING
 // ========================================
-function safeLocalGet(key, fallback = null) {
-    try {
-        const val = localStorage.getItem(key);
-        return val ? JSON.parse(val) : fallback;
-    } catch { return fallback; }
-}
-
-function safeLocalSet(key, value) {
-    try { localStorage.setItem(key, JSON.stringify(value)); }
-    catch (e) { console.warn("localStorage error", e); }
-}
-
-function safeArray(data) {
-    if (!data || !Array.isArray(data)) return [];
-    return data;
-}
-
-function safeObject(obj) {
-    if (!obj || typeof obj !== "object") return {};
-    return obj;
-}
-
-function normalizeCliente(c) {
-    return {
-        nombre: c?.nombre ?? "Sin nombre",
-        ip: c?.ip ?? "0.0.0.0",
-        estado: c?.estado ?? "desconocido",
-        ...c
-    };
-}
-
-function clienteExiste(lista, cliente) {
-    if (!lista || !Array.isArray(lista)) return false;
-    const newFullName = `${cliente.nombre || ''} ${cliente.apellido || ''}`.trim().toLowerCase();
-    
-    return lista.some(c => {
-        const existingFullName = `${c.nombre || ''} ${c.apellido || ''}`.trim().toLowerCase();
-        // Return true ONLY if name AND IP match (this identifies a duplicate)
-        // If IP is different, it's allowed even if name is the same.
-        return existingFullName === newFullName && 
-               (c.ip === cliente.ip || (c.ip === "0.0.0.0" && cliente.ip === "0.0.0.0"));
-    });
-}
 
 // Local cache to keep synchronous functions working for the legacy UI
 let CACHE = {
@@ -243,9 +209,6 @@ const DB = {
         }
     },
 
-    generateId() {
-        return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-    },
 
     // ---- Clients ----
     getClients() {
@@ -288,7 +251,7 @@ const DB = {
             return existing.find(c => c.nombre?.toLowerCase() === client.nombre?.toLowerCase() && c.ip === client.ip);
         }
 
-        const id = client.id || this.generateId();
+        const id = client.id || generateId();
         const clientRef = doc(db, "clients", id);
         
         const data = {
@@ -330,7 +293,7 @@ const DB = {
     },
 
     async savePayment(payment) {
-        const id = payment.id || this.generateId();
+        const id = payment.id || generateId();
         const paymentRef = doc(db, "payments", id);
         
         const data = {
@@ -403,7 +366,7 @@ const DB = {
     async addMoroso(clientId) {
         if (this.isMoroso(clientId)) return null;
         
-        const id = this.generateId();
+        const id = generateId();
         const entry = {
             id,
             clientId,

@@ -2,8 +2,24 @@ import DB from './db.js';
 import SEED_DATA from './seed-data.js';
 import { API_URL } from './config.js';
 import { getNextDebtor, getPriorityDebtors } from './collectionService.js';
-import { sendWhatsApp, getMessageByType, sendMassMessages, generateMessage, getMessageLog } from './whatsappService.js';
-import { activateClient, reduceClient } from './mikrotikService.js';
+import { 
+    sendWhatsApp, 
+    getMessageByType, 
+    buildMassMessageList, 
+    sendOneFromList, 
+    generateMessage, 
+    getMessageLog 
+} from './whatsappService.js';
+import { activateClient, reduceClient, loginBackend } from './mikrotikService.js';
+import { 
+    safeArray, 
+    safeObject, 
+    normalizeCliente, 
+    clienteExiste, 
+    formatNumber, 
+    formatCurrency, 
+    formatDate 
+} from './utils.js';
 
 // ========================================
 // UTILS & HARDENING (Final Version)
@@ -23,31 +39,6 @@ window.lockAction = lockAction;
 
 const $ = (selector) => document.querySelector(selector);
 const safeHTML = (el, html) => { if (el) el.innerHTML = html; };
-
-function safeAddEvent(element, event, handler) {
-    if (!element) return;
-    element.removeEventListener(event, handler);
-    element.addEventListener(event, handler);
-}
-window.safeAddEvent = safeAddEvent;
-
-function safeArray(data) {
-    if (!data || !Array.isArray(data)) return [];
-    return data;
-}
-window.safeArray = safeArray;
-
-function validateClientes(data) {
-    if (!Array.isArray(data)) return [];
-    return data.map(normalizeCliente);
-}
-window.validateClientes = validateClientes;
-
-function safeObject(obj) {
-    if (!obj || typeof obj !== "object") return {};
-    return obj;
-}
-window.safeObject = safeObject;
 
 let serverStatusInitialized = false;
 function showServerStatus(status) {
@@ -118,17 +109,7 @@ function preventDoubleClick(target) {
 }
 window.preventDoubleClick = preventDoubleClick;
 
-function normalizeCliente(c) {
-    return {
-        nombre: c?.nombre ?? "Sin nombre",
-        ip: c?.ip ?? "0.0.0.0",
-        estado: c?.estado ?? "desconocido",
-        ...c
-    };
-}
-
 async function checkLogin(user, pass) {
-    const { loginBackend } = await import('./mikrotikService.js');
     const result = await loginBackend(user, pass);
     if (!result.success) {
         alert(result.message || 'Credenciales incorrectas');
@@ -158,19 +139,6 @@ function isAuthenticated() {
 
 let clientesInitialized = false;
 
-function clienteExiste(lista, cliente) {
-    if (!lista || !Array.isArray(lista)) return false;
-    const newFullName = `${cliente.nombre || ''} ${cliente.apellido || ''}`.trim().toLowerCase();
-    
-    return lista.some(c => {
-        const existingFullName = `${c.nombre || ''} ${c.apellido || ''}`.trim().toLowerCase();
-        // Return true ONLY if name AND IP match (this identifies a duplicate)
-        // If IP is different, it's allowed even if name is the same.
-        return existingFullName === newFullName && 
-               (c.ip === cliente.ip || (c.ip === "0.0.0.0" && cliente.ip === "0.0.0.0"));
-    });
-}
-window.clienteExiste = clienteExiste;
 
 const App = {
     currentView: 'dashboard',
@@ -507,7 +475,7 @@ const App = {
         document.getElementById('stat-total-clients').textContent = stats.totalClients;
         document.getElementById('stat-paid').textContent = stats.paidCount;
         document.getElementById('stat-debt').textContent = stats.debtCount;
-        document.getElementById('stat-revenue').textContent = this.formatCurrency(stats.totalRevenue);
+        document.getElementById('stat-revenue').textContent = formatCurrency(stats.totalRevenue);
 
         // NEW: Update Suspended card
         const suspendedStat = document.getElementById('stat-suspended');
@@ -521,11 +489,11 @@ const App = {
             revenueGrid.innerHTML = `
                 <div class="rev-card">
                     <span class="rev-label">Efectivo Total</span>
-                    <span class="rev-value">${this.formatCurrency(stats.revenueCash)}</span>
+                    <span class="rev-value">${formatCurrency(stats.revenueCash)}</span>
                 </div>
                 <div class="rev-card">
                     <span class="rev-label">Transferencia Total</span>
-                    <span class="rev-value" style="color: #3b82f6;">${this.formatCurrency(stats.revenueTransfer)}</span>
+                    <span class="rev-value" style="color: #3b82f6;">${formatCurrency(stats.revenueTransfer)}</span>
                 </div>
             `;
         }
@@ -546,8 +514,8 @@ const App = {
                 <div class="zone-name">${z.zone}</div>
                 <div class="zone-count">${z.total} <small>clientes</small></div>
                 <div class="zone-revenue-mini">
-                    <div>💵 ${this.formatCurrency(z.cash)}</div>
-                    <div style="color: #60a5fa;">🏦 ${this.formatCurrency(z.transfer)}</div>
+                    <div>💲 ${formatCurrency(z.cash)}</div>
+                    <div style="color: #60a5fa;">💳 ${formatCurrency(z.transfer)}</div>
                 </div>
                 <div class="zone-debt-info">
                     <span class="zone-debt-count">${z.debt}</span>
@@ -766,7 +734,7 @@ const App = {
                             <div class="client-meta">
                                 <span class="client-zone-badge ${colors.badge}">${normClient.zona}</span>
                                 ${hasPaid
-                        ? `<span class="client-status status-activo">$${this.formatNumber(payment.amount)}</span>`
+                        ? `<span class="client-status status-activo">$${formatNumber(payment.amount)}</span>`
                         : '<span class="client-status status-deudor">PENDIENTE</span>'
                     }
                             </div>
@@ -875,13 +843,14 @@ const App = {
         // Client modal
         this._bind('fab-add-client', () => this.openClientModal());
         this._bind('modal-client-close', () => this.closeModal('modal-client'));
-
-        // Payment modal
         this._bind('modal-payment-close', () => this.closeModal('modal-payment'));
-
-        // Detail modal
         this._bind('modal-detail-close', () => this.closeModal('modal-client-detail'));
+        this._bind('modal-moroso-close', () => this.closeModal('modal-add-moroso'));
+        this._bind('modal-mass-close', () => this.closeModal('modal-mass-whatsapp'));
 
+        // Overlay clicks
+        const modals = ['modal-client', 'modal-payment', 'modal-client-detail', 'modal-confirm', 'modal-add-moroso', 'modal-mass-whatsapp'];
+        
         // Confirm modal
         this._bind('confirm-cancel', () => this.closeModal('modal-confirm'));
         this._bind('confirm-ok', () => {
@@ -1082,10 +1051,10 @@ const App = {
                         <div class="payment-history-item">
                             <div class="payment-history-left">
                                 <span class="payment-history-period">${this.MONTHS[p.month]} ${p.year}</span>
-                                <span class="payment-history-date">${this.formatDate(p.paymentDate)}</span>
+                                <span class="payment-history-date">${formatDate(p.paymentDate)}</span>
                             </div>
                             <div class="payment-history-right">
-                                <span class="payment-history-amount">$${this.formatNumber(p.amount)}</span>
+                                <span class="payment-history-amount">$${formatNumber(p.amount)}</span>
                                 <span class="payment-history-method">${p.method}</span>
                             </div>
                             <button class="payment-delete-btn" onclick="App.confirmDeletePayment('${p.id}', '${client.id}')" title="Eliminar pago">
@@ -1426,20 +1395,48 @@ const App = {
             return;
         }
 
-        const today = new Date().getDate();
-        const type = (today >= 13) ? '13' : '10';
-        const typeLabel = (today >= 13) ? 'Aviso de Reducción (Día 13+)' : 'Recordatorio (Día 10)';
+        const settings = DB.getSettings();
+        const massList = buildMassMessageList(stats.debtClients, settings);
+        
+        if (massList.length === 0) {
+            this.showToast('No hay mensajes para enviar', 'info');
+            return;
+        }
 
-        this.showConfirm(
-            'Envío Masivo',
-            `¿Estás seguro de enviar ${stats.debtClients.length} mensajes? <br><br><b>Tipo:</b> ${typeLabel}`,
-            () => {
-                const count = sendMassMessages(this.currentMonth, this.currentYear, type);
-                this.showToast(`Se abrieron ${count} ventanas de WhatsApp`, 'success');
-                this.refreshNotificationsLog();
+        this.renderMassWhatsAppList(massList);
+        this.openModal('modal-mass-whatsapp');
+    },
+
+    renderMassWhatsAppList(list) {
+        const container = document.getElementById('mass-whatsapp-list');
+        if (!container) return;
+
+        container.innerHTML = list.map((item, index) => `
+            <div style="background: var(--bg-hover); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color);">
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; font-size: 14px;">${item.clientName}</div>
+                    <div style="font-size: 11px; opacity: 0.7; margin-top: 2px;">
+                        Status: <span id="mass-status-${index}" style="color: var(--accent-blue)">Pendiente</span>
+                    </div>
+                </div>
+                <button class="btn-primary-sm" onclick="App.sendOneMassMessage('${index}', '${item.phone}', '${encodeURIComponent(item.message)}', '${item.clientName}')" style="padding: 6px 12px; font-size: 12px;">
+                    Enviar
+                </button>
+            </div>
+        `).join('');
+    },
+
+    sendOneMassMessage(index, phone, messageEncoded, name) {
+        const message = decodeURIComponent(messageEncoded);
+        const success = sendOneFromList(phone, message, name);
+        
+        if (success) {
+            const statusEl = document.getElementById(`mass-status-${index}`);
+            if (statusEl) {
+                statusEl.textContent = 'Enviado';
+                statusEl.style.color = '#25D366';
             }
-        );
-        document.getElementById('confirm-ok').textContent = 'Confirmar Envío';
+        }
     },
 
     refreshNotificationsLog() {
@@ -2555,6 +2552,10 @@ const App = {
     // ========================================
     // Utilities
     // ========================================
+    formatNumber(num) { return formatNumber(num); },
+    formatCurrency(amount) { return formatCurrency(amount); },
+    formatDate(dateStr) { return formatDate(dateStr); },
+
     refreshCurrentView() {
         switch (this.currentView) {
             case 'dashboard': this.renderDashboard(); break;
@@ -2562,20 +2563,6 @@ const App = {
             case 'payments': this.renderPayments(); break;
             case 'morosos': this.renderMorosos(); break;
         }
-    },
-
-    formatNumber(num) {
-        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    },
-
-    formatCurrency(amount) {
-        return '$' + this.formatNumber(amount);
-    },
-
-    formatDate(dateStr) {
-        if (!dateStr) return '-';
-        const [year, month, day] = dateStr.split('-');
-        return `${day}/${month}/${year}`;
     },
 
     showToast(message, type = 'info') {

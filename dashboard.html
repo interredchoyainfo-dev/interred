@@ -768,6 +768,24 @@ Contacto: {telefono}. ¡Gracias!</textarea>
             </div>
         </div>
 
+        <!-- Mass WhatsApp Modal -->
+        <div class="modal-overlay hidden" id="modal-mass-whatsapp">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2 class="modal-title">Envío Masivo de Mensajes</h2>
+                    <button class="modal-close" id="modal-mass-close">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p style="margin-bottom: 15px; font-size: 0.9rem; opacity: 0.8;">Para evitar que el navegador bloquee las ventanas, enviá los mensajes uno por uno usando los botones a continuación.</p>
+                    <div id="mass-whatsapp-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 5px;">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Toast Container -->
         <div class="toast-container" id="toast-container"></div>
     </div>
