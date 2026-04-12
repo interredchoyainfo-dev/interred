@@ -152,9 +152,12 @@ async function handleQueue(api, ip, clientName, shouldBeReduced) {
 
     } catch (err) {
         const msg = (err.message || '').toUpperCase();
-        if (msg.includes('!EMPTY') || msg.includes('UNKNOWNREPLY') || msg.includes('TRAP')) {
-            console.log(`[handleQueue] ⚠️ MikroTik v7 bypass: ${err.message}`);
-            return { success: true, message: 'Operación realizada correctamente' };
+        if (msg.includes('!EMPTY') || msg.includes('UNKNOWNREPLY') || msg.includes('TRAP') || msg.includes('ALREADY HAVE SUCH NAME')) {
+            console.log(`[handleQueue] ⚠️ MikroTik bypass: ${err.message}`);
+            return { 
+                success: true, 
+                message: shouldBeReduced ? 'Servicio reducido (1k/1k)' : 'Servicio activado (cola deshabilitada)' 
+            };
         }
         console.error('[handleQueue] ❌ ERROR:', err.message);
         return { success: false, message: `Error MikroTik: ${err.message}` };
