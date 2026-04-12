@@ -106,6 +106,9 @@
                                 <span class="material-symbols-outlined" data-icon="lock">lock</span>
                             </div>
                             <input class="w-full pl-12 pr-12 py-4 bg-surface-variant border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary transition-all outline-none text-on-surface placeholder:text-on-surface-variant/40" id="password" placeholder="••••••••" type="password" required/>
+                            <button type="button" id="toggle-password" class="absolute inset-y-0 right-4 flex items-center text-on-surface-variant hover:text-primary transition-colors">
+                                <span class="material-symbols-outlined" id="toggle-password-icon">visibility</span>
+                            </button>
                         </div>
                     </div>
                     <!-- Error Message Area -->
@@ -142,6 +145,17 @@
 
     <script type="module">
         import { loginBackend } from './js/mikrotikService.js';
+
+        // Funcionalidad ver contraseña
+        const togglePassword = document.getElementById('toggle-password');
+        const passwordInput = document.getElementById('password');
+        const toggleIcon = document.getElementById('toggle-password-icon');
+
+        togglePassword.addEventListener('click', () => {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            toggleIcon.textContent = type === 'password' ? 'visibility' : 'visibility_off';
+        });
 
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
