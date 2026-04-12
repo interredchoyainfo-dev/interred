@@ -19,10 +19,9 @@
   },
   "dependencies": {
     "cors": "^2.8.6",
+    "dotenv": "^17.4.1",
     "express": "^5.2.1",
     "firebase": "^12.11.0",
-    "mikronode": "^2.3.11",
-    "puppeteer": "^24.40.0",
     "routeros-client": "^1.1.1"
   }
 }

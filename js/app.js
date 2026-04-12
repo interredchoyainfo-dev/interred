@@ -127,31 +127,30 @@ function normalizeCliente(c) {
     };
 }
 
-function checkLogin(user, pass) {
-    const validUser = "Admin";
-    const validPass = "Giolezana19";
-    if (user !== validUser || pass !== validPass) {
-        alert("Credenciales incorrectas");
+async function checkLogin(user, pass) {
+    const { loginBackend } = await import('./mikrotikService.js');
+    const result = await loginBackend(user, pass);
+    if (!result.success) {
+        alert(result.message || 'Credenciales incorrectas');
         return false;
     }
     const session = {
         auth: true,
-        time: Date.now(),
-        key: btoa("Admin")
+        time: Date.now()
     };
-    sessionStorage.setItem("auth", JSON.stringify(session));
+    sessionStorage.setItem('auth', JSON.stringify(session));
     return true;
 }
 
 function isAuthenticated() {
     try {
-        const session = JSON.parse(sessionStorage.getItem("auth"));
+        const session = JSON.parse(sessionStorage.getItem('auth'));
         if (!session || !session.auth) return false;
-        const now = Date.now();
-        const maxTime = 6 * 60 * 60 * 1000; // 6h
-        if ((now - session.time) > maxTime) return false;
-        if (session.key !== btoa("Admin")) return false;
-        return true;
+        const maxTime = 6 * 60 * 60 * 1000; // 6 horas
+        if ((Date.now() - session.time) > maxTime) return false;
+        // También verificar que tengamos token de API
+        const token = sessionStorage.getItem('interred_api_token');
+        return !!token;
     } catch {
         return false;
     }
@@ -209,10 +208,10 @@ const App = {
 
         // Auth Check V2
         if (!isAuthenticated()) {
-            const user = prompt("Usuario:");
-            const pass = prompt("Contraseña:");
-            if (!checkLogin(user, pass)) {
-                window.location.href = "login.html";
+            const user = prompt('Usuario:');
+            const pass = prompt('Contraseña:');
+            if (!await checkLogin(user, pass)) {
+                window.location.href = 'login.html';
                 return;
             }
         }

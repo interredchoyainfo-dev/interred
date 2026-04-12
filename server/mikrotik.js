@@ -1,26 +1,38 @@
 import { RouterOSClient } from 'routeros-client';
 
+// BUG #12 corregido: valida que cada octeto esté entre 0 y 255
 function isValidIP(ip) {
-    return /^(\d{1,3}\.){3}\d{1,3}$/.test(ip);
+    const parts = ip.split('.');
+    if (parts.length !== 4) return false;
+    return parts.every(p => {
+        const n = parseInt(p, 10);
+        return !isNaN(n) && n >= 0 && n <= 255 && String(n) === p;
+    });
 }
 
-/**
- * Connects to MikroTik and executes a callback with the API handle.
- */
+// BUG #6 corregido: normaliza tildes y ñ antes de sanitizar
+function safeName(name) {
+    return (name || 'Cliente')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')  // elimina diacríticos (tildes)
+        .replace(/ñ/gi, 'n')              // ñ → n
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '_')
+        .replace(/_+/g, '_')              // colapsa guiones bajos múltiples
+        .replace(/^_|_$/g, '');           // elimina guiones al inicio/fin
+}
+
 async function withMikrotik(config, callback) {
-    console.log(`[withMikrotik] Intentando conectar a ${config.host} como ${config.user}...`);
+    console.log(`[withMikrotik] Conectando a ${config.host} como ${config.user}...`);
     const api = new RouterOSClient({
         host: config.host,
         port: config.port || 8729,
         user: config.user,
         password: config.password,
         keepalive: false,
-        tls: {
-            rejectUnauthorized: false
-        }
+        tls: { rejectUnauthorized: false }
     });
 
-    // Importante: Catch de error para evitar que el proceso se muera (!falla crítica)
     api.on('error', (err) => {
         console.error('❌ [withMikrotik] Error de evento API:', err.message);
     });
@@ -31,7 +43,7 @@ async function withMikrotik(config, callback) {
         await api.close();
         return result;
     } catch (error) {
-        console.error('❌ [withMikrotik] Excepción atrapada:', error.message);
+        console.error('❌ [withMikrotik] Excepción:', error.message);
         try { await api.close(); } catch {}
         return { success: false, message: error.message };
     }
@@ -39,140 +51,128 @@ async function withMikrotik(config, callback) {
 
 async function findQueue(queueMenu, ip) {
     const cleanIP = ip.split('/')[0].trim();
-    const nameTarget = `IP_${cleanIP}`;
-
-    console.log(`[ findQueue ] Buscando nativamente: ${cleanIP}`);
+    console.log(`[findQueue] Buscando cola para: ${cleanIP}`);
 
     try {
-        // Intentamos buscar por target (lo más fiable)
-        const targetsToTry = [`${cleanIP}/32`, cleanIP];
-        
-        for (const target of targetsToTry) {
+        // Buscar por target (lo más fiable)
+        for (const target of [`${cleanIP}/32`, cleanIP]) {
             try {
-                const results = await queueMenu.get({ "?target": target });
+                const results = await queueMenu.get({ '?target': target });
                 if (results && results.length > 0) {
                     const q = results[0];
                     const realId = q['.id'] || q.id || q.name;
-                    console.log(`[ findQueue ] ✅ ENCONTRADA por Target: ${q.name}`);
-                    return { ...q, "_detectedId": realId };
+                    console.log(`[findQueue] ✅ Encontrada por target: ${q.name}`);
+                    return { ...q, _detectedId: realId };
                 }
             } catch (innerErr) {
                 if (innerErr.message.includes('!empty')) {
-                    console.log(`[ findQueue ] ⚠️ MikroTik v7 Catch (!empty) durante búsqueda de target.`);
+                    console.log('[findQueue] ⚠️ MikroTik v7 !empty en búsqueda por target');
                 } else {
                     throw innerErr;
                 }
             }
         }
 
-        // Si no, por nombre
+        // Buscar por nombre como fallback
+        const nameTarget = `IP_${cleanIP}`;
         try {
-            const resultsByName = await queueMenu.get({ "?name": nameTarget });
+            const resultsByName = await queueMenu.get({ '?name': nameTarget });
             if (resultsByName && resultsByName.length > 0) {
                 const q = resultsByName[0];
                 const realId = q['.id'] || q.id || q.name;
-                console.log(`[ findQueue ] ✅ ENCONTRADA por Nombre: ${q.name}`);
-                return { ...q, "_detectedId": realId };
+                console.log(`[findQueue] ✅ Encontrada por nombre: ${q.name}`);
+                return { ...q, _detectedId: realId };
             }
         } catch (innerErr) {
-            if (innerErr.message.includes('!empty')) {
-                console.log(`[ findQueue ] ⚠️ MikroTik v7 Catch (!empty) durante búsqueda de nombre.`);
-            } else {
-                throw innerErr;
-            }
+            if (!innerErr.message.includes('!empty')) throw innerErr;
         }
-    } catch (e) { 
-        console.error("❌ Error en búsqueda MikroTik:", e.message);
+    } catch (e) {
+        console.error('❌ [findQueue] Error:', e.message);
     }
-    
-    console.log(`[ findQueue ] ⚠️ No se encontró ninguna cola para ${cleanIP}`);
+
+    console.log(`[findQueue] ⚠️ No se encontró cola para ${cleanIP}`);
     return null;
 }
 
-async function handleQueue(api, ip, clientName, shouldBeActive) {
+// BUG #5 corregido: parámetro renombrado a shouldBeReduced (true = reducir, false = activar)
+// BUG #11 corregido: eliminado .enable() redundante después de .set()
+async function handleQueue(api, ip, clientName, shouldBeReduced) {
     const cleanIP = ip.split('/')[0].trim();
-    const now = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour12: false });
-    
-    console.log(`[ handleQueue ] INICIO: ${clientName} (${cleanIP}) | Modo: ${shouldBeActive ? 'REDUCIR' : 'ACTIVAR'}`);
-    
+    const now = new Date().toLocaleString('es-AR', {
+        timeZone: 'America/Argentina/Buenos_Aires',
+        hour12: false
+    });
+
+    console.log(`[handleQueue] ${clientName} (${cleanIP}) | Modo: ${shouldBeReduced ? 'REDUCIR' : 'ACTIVAR'}`);
+
     try {
         const queueMenu = api.menu('/queue/simple');
         const existing = await findQueue(queueMenu, cleanIP);
         const realId = existing ? (existing['.id'] || existing.id || existing.name || existing._detectedId) : null;
 
-        // Limpiar nombre del cliente para que sea compatible con MikroTik
-        const safeName = (clientName || "Cliente").toUpperCase().replace(/[^A-Z0-9]/g, '_');
-        const finalName = safeName;
+        const finalName = safeName(clientName);
 
-        // Definimos los datos base
         const queueData = {
             name: finalName,
             target: `${cleanIP}/32`,
-            "max-limit": "1k/1k",
-            comment: ""
+            'max-limit': '1k/1k',
+            comment: ''
         };
 
-        if (shouldBeActive) {
-            // 🔴 MODO REDUCIR (Suspendido por deuda)
-            queueData.disabled = "no";
+        if (shouldBeReduced) {
+            // 🔴 REDUCIR — habilitar la cola limitadora
+            queueData.disabled = 'no';
             queueData.comment = `REDUCIDO: ${now}`;
 
             if (realId) {
-                console.log(`[ handleQueue ] ACTUALIZANDO A REDUCIDA ID: ${realId}`);
-                await queueMenu.set({ ".id": realId, ...queueData });
-                await queueMenu.enable({ ".id": realId });
+                console.log(`[handleQueue] Actualizando a REDUCIDA id: ${realId}`);
+                await queueMenu.set({ '.id': realId, ...queueData });
+                // BUG #11: NO se llama .enable() porque disabled:'no' ya lo activa
             } else {
-                console.log(`[ handleQueue ] CREANDO NUEVA COLA REDUCIDA: ${queueData.name}`);
+                console.log(`[handleQueue] Creando nueva cola REDUCIDA: ${finalName}`);
                 await queueMenu.add(queueData);
             }
             return { success: true, message: 'Servicio reducido (1k/1k)' };
 
         } else {
-            // 🟢 MODO ACTIVAR (Libre navegación)
-            queueData.disabled = "yes";
-            queueData.comment = ""; // Limpio en activo
+            // 🟢 ACTIVAR — deshabilitar la cola para navegación libre
+            queueData.disabled = 'yes';
+            queueData.comment = '';
 
             if (realId) {
-                console.log(`[ handleQueue ] ACTUALIZANDO A ACTIVA (DESHABILITADA) ID: ${realId}`);
-                await queueMenu.set({ ".id": realId, ...queueData });
-                await queueMenu.disable({ ".id": realId });
+                console.log(`[handleQueue] Actualizando a ACTIVA (cola deshabilitada) id: ${realId}`);
+                await queueMenu.set({ '.id': realId, ...queueData });
+                // BUG #11: NO se llama .disable() porque disabled:'yes' ya lo desactiva
             } else {
-                console.log(`[ handleQueue ] CREANDO COLA ACTIVA (DESHABILITADA): ${queueData.name}`);
+                console.log(`[handleQueue] Creando cola ACTIVA (deshabilitada): ${finalName}`);
                 await queueMenu.add(queueData);
             }
-            return { success: true, message: 'Servicio activado (cola creada y desactivada)' };
+            return { success: true, message: 'Servicio activado (cola deshabilitada)' };
         }
+
     } catch (err) {
         const msg = (err.message || '').toUpperCase();
         if (msg.includes('!EMPTY') || msg.includes('UNKNOWNREPLY') || msg.includes('TRAP')) {
-            console.log(`[ handleQueue ] ⚠️ MikroTik v7 Bypass: ${err.message}`);
+            console.log(`[handleQueue] ⚠️ MikroTik v7 bypass: ${err.message}`);
             return { success: true, message: 'Operación realizada correctamente' };
         }
-        
-        console.error(`[ handleQueue ] ❌ ERROR MIKROTIK:`, err.message);
+        console.error('[handleQueue] ❌ ERROR:', err.message);
         return { success: false, message: `Error MikroTik: ${err.message}` };
     }
 }
 
-// 🔴 REDUCIR (Crea/Habilita la cola a 1k/1k)
-export async function reduceClient(config, ip, clientName = "Cliente") {
+// 🔴 REDUCIR (crea/habilita la cola a 1k/1k)
+export async function reduceClient(config, ip, clientName = 'Cliente') {
     if (!isValidIP(ip.split('/')[0])) return { success: false, message: 'IP inválida' };
-
-    return withMikrotik(config, async (api) => {
-        return await handleQueue(api, ip, clientName, true);
-    });
+    return withMikrotik(config, (api) => handleQueue(api, ip, clientName, true));
 }
 
-// 🟢 ACTIVAR (Deshabilita la cola)
-export async function activateClient(config, ip, clientName = "Cliente") {
+// 🟢 ACTIVAR (deshabilita la cola — navegación libre)
+export async function activateClient(config, ip, clientName = 'Cliente') {
     if (!isValidIP(ip.split('/')[0])) return { success: false, message: 'IP inválida' };
-
-    return withMikrotik(config, async (api) => {
-        return await handleQueue(api, ip, clientName, false);
-    });
+    return withMikrotik(config, (api) => handleQueue(api, ip, clientName, false));
 }
 
-// Alias para compatibilidad
 export const suspendClient = reduceClient;
 
 export async function testConnection(config) {
@@ -194,18 +194,13 @@ export async function getSystemStatus(config) {
         const identity = await api.menu('/system/identity').get();
         const resource = await api.menu('/system/resource').get();
         const interfaces = await api.menu('/interface').get();
-        
-        console.log('[MIKROTIK] Resource:', resource?.[0]);
-        if (interfaces && interfaces.length > 0) {
-            console.log('[MIKROTIK] First Interface Sample:', interfaces[0]);
-        }
-        
+
         return {
             success: true,
             identity: identity?.[0]?.name || 'MikroTik',
-            cpuLoad: resource?.[0]?.['cpu-load'] !== undefined ? resource[0]['cpu-load'].toString() : '0',
-            freeMemory: resource?.[0]?.['free-memory'] !== undefined ? resource[0]['free-memory'].toString() : '0',
-            totalMemory: resource?.[0]?.['total-memory'] !== undefined ? resource[0]['total-memory'].toString() : '0',
+            cpuLoad: resource?.[0]?.['cpu-load']?.toString() || '0',
+            freeMemory: resource?.[0]?.['free-memory']?.toString() || '0',
+            totalMemory: resource?.[0]?.['total-memory']?.toString() || '0',
             uptime: resource?.[0]?.uptime || '0s',
             version: resource?.[0]?.version || '',
             interfaces: (interfaces || []).map(i => ({
@@ -220,26 +215,32 @@ export async function getSystemStatus(config) {
     });
 }
 
+// BUG #7 corregido: propagamos el error correctamente en reboot
 export async function rebootRouter(config) {
     return withMikrotik(config, async (api) => {
-        try { await api.menu('/system/reboot').exec(); } catch (e) {}
-        return { success: true, message: 'Comando de reinicio enviado.' };
+        try {
+            await api.menu('/system/reboot').exec();
+            return { success: true, message: 'Comando de reinicio enviado.' };
+        } catch (e) {
+            // El router a veces cae antes de responder — es esperado
+            if (e.message && (e.message.includes('Connection') || e.message.includes('closed'))) {
+                return { success: true, message: 'Reiniciando (conexión cerrada por el router, es normal).' };
+            }
+            console.error('[rebootRouter] Error inesperado:', e.message);
+            return { success: false, message: `Error al reiniciar: ${e.message}` };
+        }
     });
 }
 
 export async function listSimpleQueues(config) {
     return withMikrotik(config, async (api) => {
         const results = await api.menu('/queue/simple').get();
-        const data = (results || []).map(q => ({
-            name: q.name,
-            target: q.target
-        }));
+        const data = (results || []).map(q => ({ name: q.name, target: q.target }));
         return { success: true, data };
     });
 }
 
-// ---- COMPATIBILITY STUBS ----
-// (Funciones requeridas por server/index.js que no estaban definidas para evitar el crash status 1)
+// ---- Stubs de compatibilidad ----
 export async function getMorososList(config) {
     return { success: false, data: [], message: 'No implementado' };
 }
@@ -252,10 +253,12 @@ export async function activateQueueByName(config, name) {
 export async function updateClientQueue(config, ip, clientName, action) {
     if (action === 'suspend' || action === 'reduce' || action === 'enable') {
         return reduceClient(config, ip, clientName);
-    } else {
-        return activateClient(config, ip, clientName);
     }
+    return activateClient(config, ip, clientName);
 }
+
+// BUG #9 corregido: la limpieza de huérfanos ya no depende del prefijo 'IP_'
+// Busca por target (IP) que no esté en la lista de clientes
 export async function syncClientsWithMikrotik(config, clients, morosos, clean = false) {
     return withMikrotik(config, async (api) => {
         const queueMenu = api.menu('/queue/simple');
@@ -263,67 +266,59 @@ export async function syncClientsWithMikrotik(config, clients, morosos, clean = 
         try {
             queues = await queueMenu.get();
         } catch (e) {
-            console.error("❌ Error listando colas en Sync:", e.message);
-            return { success: false, message: "No se pudo obtener la lista de colas" };
+            console.error('❌ Error listando colas en Sync:', e.message);
+            return { success: false, message: 'No se pudo obtener la lista de colas' };
         }
-        
+
         let actions = [];
-        console.log(`[ SYNC ] Iniciando sincronización de ${clients.length} clientes... (Clean: ${clean})`);
+        console.log(`[SYNC] Sincronizando ${clients.length} clientes... (clean: ${clean})`);
 
         for (const client of clients) {
             try {
-                if (!client.ip || client.ip === "0.0.0.0") continue;
+                if (!client.ip || client.ip === '0.0.0.0') continue;
 
                 const cleanIP = client.ip.split('/')[0].trim();
                 const target = `${cleanIP}/32`;
-                const targets = [target, cleanIP];
 
                 const isMoroso = morosos.some(m => m.clientId === client.id) || client.estado === 'Deudor';
 
-                const existingArr = queues.filter(q => {
+                const existing = queues.find(q => {
                     const qTarget = (q.target || '').trim();
-                    const qName = (q.name || '').toUpperCase();
-                    const nameTarget = `IP_${cleanIP}`.toUpperCase();
-                    return targets.includes(qTarget) || qName === nameTarget;
+                    return qTarget === target || qTarget === cleanIP;
                 });
 
-                const existing = existingArr[0];
                 const realId = existing ? (existing['.id'] || existing.id || existing.name) : null;
 
                 const fullName = `${client.nombre || ''} ${client.apellido || ''}`.trim() || 'Cliente';
-                const safeName = fullName.toUpperCase().replace(/[^A-Z0-9]/g, '_');
-                const finalName = safeName;
+                const finalName = safeName(fullName);
 
-                // 🔴 MOROSO → DEBE TENER QUEUE ACTIVA (Limitada)
                 if (isMoroso) {
+                    // 🔴 MOROSO → queue habilitada (limitada)
                     const queueData = {
                         name: finalName,
-                        target: target,
-                        "max-limit": "1k/1k",
-                        disabled: "no",
+                        target,
+                        'max-limit': '1k/1k',
+                        disabled: 'no',
                         comment: `REDUCIDO: ${new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour12: false })}`
                     };
-
                     if (existing && realId) {
-                        await queueMenu.set({ ".id": realId, ...queueData });
+                        await queueMenu.set({ '.id': realId, ...queueData });
                         actions.push(`✔ ${client.nombre} limitado`);
                     } else {
                         await queueMenu.add(queueData);
                         actions.push(`➕ ${client.nombre} creado (moroso)`);
                     }
-                }
-                // 🟢 ACTIVO → NAVEGACIÓN LIBRE (dejamos la cola desactivada pero creada)
-                else {
+                } else {
+                    // 🟢 ACTIVO → queue deshabilitada (libre)
                     const queueData = {
                         name: finalName,
-                        target: target,
-                        "max-limit": "1k/1k",
-                        disabled: "yes",
-                        comment: ""
+                        target,
+                        'max-limit': '1k/1k',
+                        disabled: 'yes',
+                        comment: ''
                     };
-
                     if (existing && realId) {
-                        await queueMenu.set({ ".id": realId, ...queueData });
+                        await queueMenu.set({ '.id': realId, ...queueData });
                         actions.push(`🟢 ${client.nombre} actualizado (libre)`);
                     } else {
                         await queueMenu.add(queueData);
@@ -336,37 +331,33 @@ export async function syncClientsWithMikrotik(config, clients, morosos, clean = 
                     actions.push(`✔ ${client.ip} (v7 confirm)`);
                     continue;
                 }
-                console.error(`[ SYNC ] Error procesando cliente ${client.nombre}:`, err.message);
+                console.error(`[SYNC] Error en cliente ${client.nombre}:`, err.message);
                 actions.push(`❌ Error en ${client.ip}: ${err.message}`);
             }
         }
 
-        // 💣 LIMPIEZA DE HUÉRFANOS (Opcional, pero útil)
-        console.log("[ SYNC ] Limpiando colas huérfanas...");
+        // BUG #9 corregido: limpieza busca por target (IP) no por nombre
+        console.log('[SYNC] Limpiando colas huérfanas...');
+        const clientIPs = new Set(
+            clients
+                .filter(c => c.ip && c.ip !== '0.0.0.0')
+                .map(c => c.ip.split('/')[0].trim())
+        );
+
         for (const q of queues) {
             try {
                 const qTarget = (q.target || '').split('/')[0].trim();
-                const qName = (q.name || '');
                 const realId = q['.id'] || q.id || q.name;
 
-                const existsInClients = clients.some(c => {
-                    const ip = (c.ip || '').split('/')[0].trim();
-                    return ip === qTarget;
-                });
-
-                if (!existsInClients && !q.dynamic && qName.startsWith('IP_') && realId) {
-                    await queueMenu.remove({ ".id": realId });
-                    actions.push(`🗑 Queue eliminada (${qName})`);
+                if (!clientIPs.has(qTarget) && !q.dynamic && realId) {
+                    await queueMenu.remove({ '.id': realId });
+                    actions.push(`🗑 Queue eliminada (${q.name || qTarget})`);
                 }
             } catch (e) {
-                console.error(`[ SYNC ] Error eliminando cola huérfana:`, e.message);
+                console.error('[SYNC] Error eliminando cola huérfana:', e.message);
             }
         }
 
-        return {
-            success: true,
-            message: "Sync completado",
-            actions
-        };
+        return { success: true, message: 'Sync completado', actions };
     });
 }
