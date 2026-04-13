@@ -2395,3 +2395,29 @@ button {
     transform: translateY(-2px);
     color: var(--accent-red);
 }
+
+/* Settings Vertical Items */
+.setting-item-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.setting-textarea {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    padding: 12px;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    resize: vertical;
+    transition: all 0.2s ease;
+}
+
+.setting-textarea:focus {
+    outline: none;
+    border-color: var(--accent-red);
+    background: rgba(227, 6, 19, 0.05);
+}

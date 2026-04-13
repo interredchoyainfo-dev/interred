@@ -396,6 +396,24 @@
                         </div>
                     </div>
 
+                    <!-- Mensajes WhatsApp -->
+                    <div class="settings-group glass">
+                        <h3 class="settings-group-title">Plantillas de WhatsApp</h3>
+                        <div class="setting-item-vertical">
+                            <span class="setting-label">Mensaje Vencimiento (Día 10)</span>
+                            <textarea id="setting-msg-10" class="setting-textarea glass" rows="4"></textarea>
+                            <span class="setting-desc">Variables: {nombre}, {monto}, {telefono}</span>
+                        </div>
+                        <div class="setting-item-vertical" style="margin-top: 16px;">
+                            <span class="setting-label">Mensaje Suspensión (Día 13)</span>
+                            <textarea id="setting-msg-13" class="setting-textarea glass" rows="4"></textarea>
+                            <span class="setting-desc">Variables: {nombre}, {monto}, {telefono}</span>
+                        </div>
+                        <button class="btn-primary-sm" style="margin-top: 16px; width: 100%; justify-content: center; height: 44px;" onclick="App.saveSettingsFromForm()">
+                            Guardar Plantillas
+                        </button>
+                    </div>
+
                     <div class="settings-group glass">
                         <h3 class="settings-group-title">Base de Datos</h3>
                         <div class="settings-actions" style="display: grid; grid-template-columns: 1fr; gap: 12px;">
