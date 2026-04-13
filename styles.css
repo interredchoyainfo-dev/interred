@@ -304,8 +304,10 @@ button {
 /* Main */
 .app-main {
     flex: 1;
-    padding-top: 50px; /* Reduced from 64px */
+    display: block !important;
+    padding-top: 64px;
     padding-bottom: calc(var(--nav-height) + var(--safe-bottom));
+    margin-top: 0 !important;
 }
 
 /* Views */
@@ -315,7 +317,9 @@ button {
 }
 
 .view.active {
-    display: block;
+    display: block !important;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
 }
 
 @keyframes viewIn {

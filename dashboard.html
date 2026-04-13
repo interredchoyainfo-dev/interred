@@ -791,10 +791,10 @@ Contacto: {telefono}. ¡Gracias!</textarea>
     </div>
 
     <!-- WhatsApp Template Selection Modal -->
-    <div id="modal-whatsapp-select" class="modal">
-        <div class="modal-content" style="max-width: 400px; background: var(--bg-surface); border: 1px solid var(--border-color);">
+    <div id="modal-whatsapp-select" class="modal-overlay hidden" onclick="if(event.target===this) App.closeModal('modal-whatsapp-select')">
+        <div class="modal" style="max-width: 400px; background: var(--bg-modal); border: 1px solid var(--border-color); animation: modalIn 0.3s ease-out;">
             <div class="modal-header">
-                <h3 class="modal-title">Enviar WhatsApp</h3>
+                <h3 class="modal-title">¿Qué mensaje querés enviar?</h3>
                 <button class="modal-close" onclick="App.closeModal('modal-whatsapp-select')">✕</button>
             </div>
             <div class="modal-body" style="padding: 20px;">
