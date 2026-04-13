@@ -52,7 +52,11 @@
                     </div>
                     <div>
                         <h1 class="header-title">INTER RED</h1>
-                        <p class="header-subtitle" id="header-subtitle">Dashboard</p>
+                        <p class="header-subtitle" id="header-subtitle" style="display: inline-block; margin-right: 10px;">Dashboard</p>
+                        <div id="server-status-pill" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 800; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); vertical-align: middle;">
+                            <span id="server-status-dot" style="width: 6px; height: 6px; border-radius: 50%; background: #444;"></span>
+                            <span id="server-status-text" style="opacity: 0.8; letter-spacing: 0.02em;">CONECTANDO</span>
+                        </div>
                     </div>
                 </div>
                 <div class="header-right">

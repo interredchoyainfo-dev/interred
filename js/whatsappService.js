@@ -55,17 +55,24 @@ export function getMessageByType(client, settings, type) {
  * genera y devuelve la lista de deudores con su link de WhatsApp.
  * El componente en app.js renderiza un botón por cliente.
  */
-export function buildMassMessageList(month, year, type) {
-    const clients = DB.getClients();
+export function buildMassMessageList(monthOrClients, yearOrSettings, type) {
+    let debtors = [];
     const settings = DB.getSettings();
     const today = new Date().getDate();
     const msgType = type || (today >= 13 ? '13' : '10');
 
-    const debtors = clients.filter(c =>
-        !DB.hasPaymentForMonth(c.id, month, year) &&
-        c.whatsapp &&
-        c.whatsapp.trim() !== ''
-    );
+    if (Array.isArray(monthOrClients)) {
+        // Si recibimos directamente la lista (App.js la manda así)
+        debtors = monthOrClients;
+    } else {
+        // Si lo usamos de forma general (month, year)
+        const clients = DB.getClients();
+        debtors = clients.filter(c =>
+            !DB.hasPaymentForMonth(c.id, monthOrClients, yearOrSettings) &&
+            c.whatsapp &&
+            c.whatsapp.trim() !== ''
+        );
+    }
 
     return debtors.map(client => {
         const message = getMessageByType(client, settings, msgType);
@@ -74,8 +81,10 @@ export function buildMassMessageList(month, year, type) {
             id: client.id,
             nombre: client.nombre,
             apellido: client.apellido || '',
+            clientName: `${client.nombre} ${client.apellido || ''}`.trim(),
             zona: client.zona,
             whatsapp: client.whatsapp,
+            phone: client.whatsapp,
             message,
             link
         };

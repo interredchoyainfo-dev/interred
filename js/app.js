@@ -40,35 +40,26 @@ window.lockAction = lockAction;
 const $ = (selector) => document.querySelector(selector);
 const safeHTML = (el, html) => { if (el) el.innerHTML = html; };
 
-let serverStatusInitialized = false;
 function showServerStatus(status) {
-    let el = document.getElementById("server-status");
-    if (!serverStatusInitialized) {
-        el = document.createElement("div");
-        el.id = "server-status";
-        document.body.appendChild(el);
-        serverStatusInitialized = true;
-    }
-    if (!el) return;
-    el.style.position = "fixed";
-    el.style.bottom = "10px";
-    el.style.right = "10px";
-    el.style.padding = "8px 12px";
-    el.style.borderRadius = "8px";
-    el.style.fontSize = "12px";
-    el.style.zIndex = "9999";
-    el.style.transition = "all 0.3s ease";
+    const dot = document.getElementById('server-status-dot');
+    const text = document.getElementById('server-status-text');
+    const pill = document.getElementById('server-status-pill');
+    
+    if (!dot || !text) return;
+
     if (status === "offline") {
-        el.innerText = "🔴 Servidor desconectado";
-        el.style.background = "#ff4d4f";
-        el.style.color = "#fff";
-        el.style.boxShadow = "0 2px 8px rgba(255, 77, 79, 0.4)";
+        dot.style.background = "#ff4d4f";
+        dot.style.boxShadow = "0 0 8px #ff4d4f";
+        text.innerText = "DESCONECTADO";
+        text.style.color = "#ff4d4f";
+        if (pill) pill.style.borderColor = "rgba(255, 77, 79, 0.3)";
     }
     if (status === "online") {
-        el.innerText = "🟢 Servidor operativo";
-        el.style.background = "#52c41a";
-        el.style.color = "#fff";
-        el.style.boxShadow = "0 2px 8px rgba(82, 196, 26, 0.4)";
+        dot.style.background = "#52c41a";
+        dot.style.boxShadow = "0 0 8px #52c41a";
+        text.innerText = "OPERATIVO";
+        text.style.color = "#52c41a";
+        if (pill) pill.style.borderColor = "rgba(82, 196, 26, 0.3)";
     }
 }
 window.showServerStatus = showServerStatus;
