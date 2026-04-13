@@ -252,17 +252,7 @@ const App = {
     // UI Injection (Dynamic fixes)
     // ========================================
     injectModernUI() {
-        // 1. Add Reset Button to Header (near notifications)
-        const headerRight = document.querySelector('.header-right');
-        if (headerRight && !document.getElementById('btn-reset-month')) {
-            const resetBtn = document.createElement('button');
-            resetBtn.id = 'btn-reset-month';
-            resetBtn.className = 'header-btn';
-            resetBtn.style.color = 'var(--accent-red)';
-            resetBtn.title = 'Reiniciar Mes / Borrar deudas';
-            resetBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>';
-            headerRight.prepend(resetBtn);
-        }
+        // 1. Removed Reset Button (User Request)
 
         // 2. Add Revenue Breakdown card below stats grid
         const dashboardView = document.getElementById('view-dashboard');
@@ -452,8 +442,21 @@ const App = {
         // Render view content
         switch (viewName) {
             case 'dashboard': this.renderDashboard(); break;
-            case 'clients': this.renderClients(); break;
-            case 'payments': this.renderPayments(); break;
+            case 'clients': 
+                if (updateURL) {
+                    this.currentZoneFilter = 'ALL';
+                    const searchInput = document.getElementById('search-clients');
+                    if (searchInput) searchInput.value = '';
+                }
+                this.renderClients(); 
+                break;
+            case 'payments': 
+                if (updateURL) {
+                    // Reset search but keep the payment status filter if it was set via card clicks
+                   // We don't reset filters here because they might have been set by the caller
+                }
+                this.renderPayments(); 
+                break;
             case 'morosos': this.renderMorosos(); break;
             case 'mikrotik': this.loadMikrotikDashboard(); break;
             case 'settings': this.loadSettings(); break;
@@ -557,6 +560,25 @@ const App = {
 
         // Bind send reminders
         document.getElementById('btn-send-reminders').onclick = () => this.sendBulkReminders();
+
+        // Bind Status Cards Clicks
+        const cardPaid = document.getElementById('stat-paid')?.closest('.stat-card');
+        if (cardPaid) {
+            cardPaid.style.cursor = 'pointer';
+            cardPaid.onclick = () => {
+                this.currentPaymentStatusFilter = 'PAID';
+                this.navigateTo('payments');
+            };
+        }
+
+        const cardDebt = document.getElementById('stat-debt')?.closest('.stat-card');
+        if (cardDebt) {
+            cardDebt.style.cursor = 'pointer';
+            cardDebt.onclick = () => {
+                this.currentPaymentStatusFilter = 'PENDING';
+                this.navigateTo('payments');
+            };
+        }
     },
 
     changeMonth(delta) {
@@ -706,6 +728,11 @@ const App = {
         });
 
         const list = document.getElementById('payments-list');
+        
+        // Update UI chips to reflect filter state
+        document.querySelectorAll('.chip-status').forEach(c => {
+            c.classList.toggle('active', c.dataset.status === this.currentPaymentStatusFilter);
+        });
         if (filtered.length === 0) {
             list.innerHTML = `
                 <div class="empty-state">
@@ -1355,20 +1382,35 @@ const App = {
         const client = DB.getClientById(clientId);
         if (!client) return;
 
+        const nameEl = document.getElementById('whatsapp-client-name');
+        if (nameEl) nameEl.textContent = `${client.nombre} ${client.apellido || ''}`;
+
         const settings = DB.getSettings();
-        const hasPaid = DB.hasPaymentForMonth(client.id, this.currentMonth, this.currentYear);
 
-        let message;
-        if (!hasPaid) {
-            const today = new Date().getDate();
-            const type = (today >= 13) ? '13' : '10';
-            message = getMessageByType(client, settings, type);
-        } else {
-            message = `Hola ${client.nombre}, gracias por tu pago de INTER RED. ¡Que tengas un buen día!`;
-        }
+        // Bind buttons
+        const btnVencimiento = document.getElementById('btn-msg-vencimiento');
+        const btnSuspension = document.getElementById('btn-msg-suspension');
+        const btnPaid = document.getElementById('btn-msg-paid');
 
-        sendWhatsApp(client.whatsapp, message, `${client.nombre} ${client.apellido || ''}`);
-        this.showToast('Abriendo WhatsApp...', 'info');
+        btnVencimiento.onclick = () => {
+            const message = getMessageByType(client, settings, '10');
+            sendWhatsApp(client.whatsapp, message, client.nombre);
+            this.closeModal('modal-whatsapp-select');
+        };
+
+        btnSuspension.onclick = () => {
+            const message = getMessageByType(client, settings, '13');
+            sendWhatsApp(client.whatsapp, message, client.nombre);
+            this.closeModal('modal-whatsapp-select');
+        };
+
+        btnPaid.onclick = () => {
+            const message = `Hola ${client.nombre}, gracias por tu pago de INTER RED. ¡Que tengas un buen día!`;
+            sendWhatsApp(client.whatsapp, message, client.nombre);
+            this.closeModal('modal-whatsapp-select');
+        };
+
+        this.openModal('modal-whatsapp-select');
     },
 
     previewWhatsAppMessage(clientId) {
@@ -2310,14 +2352,14 @@ const App = {
 
         if (nameEl) nameEl.value = router.name || '';
         if (hostEl) hostEl.value = router.host || '';
-        if (portEl) portEl.value = router.port || '8728';
+        if (portEl) portEl.value = router.port || '8729';
         if (userEl) userEl.value = router.user || '';
         if (passEl) passEl.value = router.password || '';
         if (listEl) listEl.value = router.addressList || 'morosos';
 
         const config = {
             host: router.host,
-            port: parseInt(router.port || '8728'),
+            port: parseInt(router.port || '8729'),
             user: router.user,
             password: router.password
         };
@@ -2393,10 +2435,10 @@ const App = {
                     if (this._mkSessionTx === undefined) this._mkSessionTx = 0;
 
                     intfList.innerHTML = res.interfaces.map(i => {
-                        const rxBytes = parseInt(i.rxByte || 0);
-                        const txBytes = parseInt(i.txByte || 0);
+                        // Support both hyphenated and camelCase field names if they exist
+                        const rxBytes = parseInt(i.rxByte || i['rx-byte'] || i['rx-bytes'] || 0);
+                        const txBytes = parseInt(i.txByte || i['tx-byte'] || i['tx-bytes'] || 0);
                         
-                        // Deltas for Mbps
                         const prevRx = this.mkPrevRxBytes[i.name];
                         const prevTx = this.mkPrevTxBytes[i.name];
                         
