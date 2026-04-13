@@ -2380,17 +2380,27 @@ const App = {
             const { getMikrotikStatus } = await import('./mikrotikService.js');
             const res = await getMikrotikStatus(config);
 
-            if (res.success) {
-                statusEl.textContent = 'Conectado';
-                statusEl.style.color = '#25D366';
+            if (res && res.success) {
+                if (statusEl) {
+                    statusEl.textContent = 'Conectado ✅';
+                    statusEl.style.color = '#25D366';
+                }
                 
-                document.getElementById('mk-uptime').textContent = res.uptime;
-                document.getElementById('mk-cpu').textContent = `CPU: ${res.cpuLoad}%`;
+                const uptimeEl = document.getElementById('mk-uptime');
+                if (uptimeEl) uptimeEl.textContent = `Uptime: ${res.uptime || '--'}`;
+                
+                const cpuEl = document.getElementById('mk-cpu');
+                if (cpuEl) cpuEl.textContent = `CPU: ${res.cpuLoad || '0'}%`;
                 
                 // RAM conversion
-                const freeMB = (parseInt(res.freeMemory) / 1024 / 1024).toFixed(0);
-                const totalMB = (parseInt(res.totalMemory) / 1024 / 1024).toFixed(0);
-                document.getElementById('mk-ram').textContent = `RAM: ${freeMB} / ${totalMB} MB`;
+                const ramEl = document.getElementById('mk-ram');
+                if (ramEl) {
+                    const freeB = parseInt(res.freeMemory || '0');
+                    const totalB = parseInt(res.totalMemory || '0');
+                    const freeMB = freeB > 0 ? (freeB / 1024 / 1024).toFixed(0) : '0';
+                    const totalMB = totalB > 0 ? (totalB / 1024 / 1024).toFixed(0) : '0';
+                    ramEl.textContent = `RAM: ${freeMB} / ${totalMB} MB`;
+                }
 
                 // Rebuild Selector if needed
                 const selector = document.getElementById('mk-interface-selector');
@@ -2420,7 +2430,7 @@ const App = {
                 }
 
                 const intfList = document.getElementById('mk-interfaces-list');
-                if (res.interfaces && res.interfaces.length > 0) {
+                if (intfList && res.interfaces && res.interfaces.length > 0) {
                     const now = Date.now();
                     const elapsed = this._mkLastPollTime ? (now - this._mkLastPollTime) / 1000 : 5;
                     this._mkLastPollTime = now;
@@ -2465,17 +2475,17 @@ const App = {
                         const txDisp = txMbps >= 1 ? txMbps.toFixed(1) + ' Mbps' : (txMbps * 1000).toFixed(0) + ' Kbps';
 
                         return `
-                            <div style="background: var(--bg-hover); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color);">
+                            <div class="glass" style="padding: 12px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color); background: rgba(255,255,255,0.02);">
                                 <div>
-                                    <div style="font-weight: 600; font-size: 14px; margin-bottom: 2px;">
-                                        <span style="color: ${i.running ? '#25D366' : '#ff4d4d'}; margin-right: 4px;">●</span> 
+                                    <div style="font-weight: 700; font-size: 13px; margin-bottom: 2px; color: var(--text-primary);">
+                                        <span style="color: ${i.running ? '#25D366' : '#ff4d4d'}; margin-right: 6px; font-size: 10px;">●</span> 
                                         ${i.name}
                                     </div>
-                                    <div style="font-size: 11px; opacity: 0.6;">Tipo: ${i.type}</div>
+                                    <div style="font-size: 10px; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.05em;">${i.type}</div>
                                 </div>
-                                <div style="text-align: right; font-size: 12px;">
-                                    <div style="color: #3b82f6; font-weight: 600;">⬇️ ${rxDisp}</div>
-                                    <div style="color: #ef4444; font-weight: 600;">⬆️ ${txDisp}</div>
+                                <div style="text-align: right; font-size: 11px;">
+                                    <div style="color: var(--accent-red); font-weight: 800;">⬇️ ${rxDisp}</div>
+                                    <div style="color: var(--text-secondary); font-weight: 800;">⬆️ ${txDisp}</div>
                                 </div>
                             </div>
                         `;
@@ -2492,24 +2502,28 @@ const App = {
                     
                     const formatBytes = (b) => {
                         if (b >= 1073741824) return (b / 1073741824).toFixed(2) + ' GB';
-                        return (b / 1048576).toFixed(1) + ' MB';
+                        if (b >= 1048576) return (b / 1048576).toFixed(1) + ' MB';
+                        return (b / 1024).toFixed(0) + ' KB';
                     };
 
                     if (rxTotal) rxTotal.textContent = `Sesión: ${formatBytes(this._mkSessionRx)}`;
                     if (txTotal) txTotal.textContent = `Sesión: ${formatBytes(this._mkSessionTx)}`;
 
                     this.updateMikrotikChart(totalRxMbps, totalTxMbps);
-                } else {
-                    intfList.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">No se encontraron interfaces</p>';
+                } else if (intfList) {
+                    intfList.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px; font-size: 12px;">Esperando datos de tráfico...</p>';
                 }
 
-            } else {
-                statusEl.textContent = 'Falló Conexión';
+            } else if (statusEl) {
+                statusEl.textContent = 'Falló Conexión ❌';
                 statusEl.style.color = '#ff4d4d';
             }
         } catch (e) {
-            statusEl.textContent = 'Error Servidor';
-            statusEl.style.color = '#ff4d4d';
+            console.error("Dashboard Error:", e);
+            if (statusEl) {
+                statusEl.textContent = 'Error Servidor ⚠️';
+                statusEl.style.color = '#ff4d4d';
+            }
         }
     },
 
