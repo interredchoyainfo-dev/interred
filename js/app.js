@@ -1776,42 +1776,40 @@ const App = {
 
         container.innerHTML = morososList.map(m => {
             const c = m.client;
-            const zoneColors = this.ZONE_COLORS[c.zona] || { avatar: 'avatar-sol', badge: 'badge-sol' };
             const initials = (c.nombre?.[0] || '') + (c.apellido?.[0] || '');
             const addedDate = new Date(m.addedAt);
             const addedStr = `${addedDate.getDate()}/${addedDate.getMonth() + 1}/${addedDate.getFullYear()}`;
+            const sinIP = !c.ip || c.ip === '0.0.0.0' || c.ip === '';
 
             return `
                 <div class="moroso-card ${m.isSuspended ? 'is-suspended' : ''}">
                     <div class="moroso-card-header">
-                        <div class="client-avatar ${zoneColors.avatar}">${initials}</div>
+                        <div class="moroso-avatar">${initials}</div>
                         <div class="moroso-details">
                             <div class="moroso-name">${c.nombre} ${c.apellido || ''}</div>
-                            <div class="moroso-meta">
-                                <span class="client-zone-badge ${zoneColors.badge}">${c.zona}</span>
-                                <span>IP: ${c.ip || 'Sin IP'}</span>
-                                <span>Agregado: ${addedStr}</span>
+                            <div class="moroso-meta" style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px;">
+                                <span style="background: var(--bg-surface-elevated); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border-color);">${c.zona}</span>
+                                <span style="opacity: 0.7;">IP: ${c.ip || '---'}</span>
+                                <span style="opacity: 0.7;">📅 ${addedStr}</span>
                             </div>
                         </div>
                         <span class="moroso-status-indicator ${m.isSuspended ? 'status-indicator-suspended' : 'status-indicator-active'}">
-                            ${m.isSuspended ? '🔴 Suspendido' : '🟢 Activo'}
+                            ${m.isSuspended ? 'Suscripción Reducida' : 'Servicio Activo'}
                         </span>
                     </div>
                     <div class="moroso-actions">
-                        ${(() => {
-                            const sinIP = !c.ip || c.ip === '0.0.0.0';
-                            return m.isSuspended
-                                ? `<button class="btn-moroso-action btn-moroso-activate" ${sinIP ? 'disabled title="Cliente sin IP"' : ''} style="opacity: ${sinIP ? '0.5' : '1'}" onclick="App.toggleMorosoSuspension('${c.id}', false)">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                                        Activar Mkt
-                                   </button>`
-                                : `<button class="btn-moroso-action btn-moroso-suspend" ${sinIP ? 'disabled title="Cliente sin IP"' : ''} style="opacity: ${sinIP ? '0.5' : '1'}" onclick="App.toggleMorosoSuspension('${c.id}', true)">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                                        Suspender Mkt
-                                   </button>`;
-                        })()}
-                        <button class="btn-moroso-action" style="background: rgba(148,163,184,0.1); color: var(--text-secondary);" onclick="App.removeMorosoFromList('${c.id}')">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        ${m.isSuspended 
+                            ? `<button class="btn-moroso-action btn-moroso-activate" ${sinIP ? 'disabled' : ''} onclick="App.toggleMorosoSuspension('${c.id}', false)">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                    Restaurar
+                               </button>`
+                            : `<button class="btn-moroso-action btn-moroso-suspend" ${sinIP ? 'disabled' : ''} onclick="App.toggleMorosoSuspension('${c.id}', true)">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+                                    Suspender
+                               </button>`
+                        }
+                        <button class="btn-moroso-action" style="background: var(--bg-surface-elevated); color: var(--text-secondary); border: 1px solid var(--border-color);" onclick="App.removeMorosoFromList('${c.id}')">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                             Quitar
                         </button>
                     </div>
