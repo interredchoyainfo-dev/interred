@@ -217,15 +217,6 @@ const App = {
         // Router initialization
         this.initRouter();
 
-        // ===== STEP 2: Async operations (may fail if Firebase is not ready) =====
-        showServerStatus("online");
-        let wasSeeded = false;
-        try {
-            wasSeeded = await SEED_DATA.run();
-        } catch (e) {
-            log('⚠️ Seed data failed (Firebase may not be configured yet):', e.message);
-        }
-
         // Show splash for 1.8s then reveal app
         setTimeout(async () => {
             const splash = document.getElementById('splash-screen');
@@ -238,6 +229,15 @@ const App = {
             if (app) app.classList.remove('hidden');
             this.initMikrotikChart();
         }, 1800);
+
+        // ===== STEP 2: Async operations (may fail if Firebase is not ready) =====
+        showServerStatus("online");
+        let wasSeeded = false;
+        try {
+            wasSeeded = await SEED_DATA.run();
+        } catch (e) {
+            log('⚠️ Seed data failed (Firebase may not be configured yet):', e.message);
+        }
 
         this.checkAutomationTriggers();
 
