@@ -304,10 +304,11 @@ button {
 /* Main */
 .app-main {
     flex: 1;
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
     padding-top: 64px;
     padding-bottom: calc(var(--nav-height) + var(--safe-bottom));
-    margin-top: 0 !important;
 }
 
 /* Views */
@@ -317,9 +318,10 @@ button {
 }
 
 .view.active {
-    display: block !important;
-    margin-top: 0 !important;
-    padding-top: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    flex: 1;
 }
 
 @keyframes viewIn {
