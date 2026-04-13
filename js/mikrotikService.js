@@ -28,12 +28,18 @@ export function clearAuthToken() {
 // ---- Login contra el backend (BUG #1 y #2 corregidos) ----
 // Reemplaza el checkLogin() que tenía las credenciales en el frontend
 export async function loginBackend(user, pass) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     try {
         const res = await fetch(`${API_URL}/api/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user, pass })
+            body: JSON.stringify({ user, pass }),
+            signal: controller.signal
         });
+        clearTimeout(timeoutId);
+        
         const data = await res.json();
         if (data.success && data.token) {
             setAuthToken(data.token);
@@ -41,6 +47,10 @@ export async function loginBackend(user, pass) {
         }
         return { success: false, message: data.message || 'Credenciales incorrectas' };
     } catch (e) {
+        clearTimeout(timeoutId);
+        if (e.name === 'AbortError') {
+            return { success: false, message: 'El servidor tarda demasiado en responder (Timeout)' };
+        }
         return { success: false, message: 'No se pudo conectar al servidor' };
     }
 }
