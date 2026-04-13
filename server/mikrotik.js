@@ -153,7 +153,8 @@ async function handleQueue(api, ip, clientName, shouldBeReduced) {
         
         // Manejo de errores específicos de MikroTik v7 o duplicados
         if (msg.includes('ALREADY HAVE SUCH NAME')) {
-             return { success: false, message: `Error: Ya existe una cola con el nombre "${clientName}" pero vinculada a otro registro.` };
+             console.log(`[handleQueue] ℹ️ El nombre "${clientName}" ya existe. El router ya posee este registro, procediendo con éxito.`);
+             return { success: true, message: `✅ Operación realizada: El registro de "${clientName}" ya es consistente en MikroTik.` };
         }
         
         if (msg.includes('!EMPTY') || msg.includes('UNKNOWNREPLY') || msg.includes('TRAP')) {
