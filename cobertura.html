@@ -11,9 +11,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     
     <!-- Icons -->
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,FILL@0..1&display=swap" rel="stylesheet"/>
     
-    <!-- GSAP for superior animations -->
+    <!-- GSAP & Canvas for Background -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
 
@@ -27,9 +27,8 @@
             colors: {
               primary: "#ff0000",
               "primary-glow": "rgba(255, 0, 0, 0.4)",
-              background: "#0a0a0a",
-              surface: "#121212",
-              "surface-highest": "#1a1a1a",
+              background: "#050505",
+              surface: "#111111",
             },
             fontFamily: {
               headline: ["Rajdhani", "sans-serif"],
@@ -46,303 +45,305 @@
         }
 
         body {
-            background-color: #0a0a0a;
+            background-color: #050505;
             color: #ffffff;
             overflow-x: hidden;
             font-family: 'Montserrat', sans-serif;
         }
 
         .glass-nav {
-            background: rgba(8, 8, 8, 0.6);
-            backdrop-filter: blur(32px);
-            -webkit-backdrop-filter: blur(32px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            background: rgba(5, 5, 5, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
 
-        .hero-bg {
-            background-image: url('fiber_optic_bg.png');
-            background-size: cover;
-            background-position: center;
-            opacity: 0.3;
-            filter: grayscale(0.5) contrast(1.2);
-            mix-blend-mode: screen;
+        #bg-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.4;
         }
 
-        .stagger-letter {
-            display: inline-block;
-            opacity: 0;
-            transform: translateY(20px) rotateX(-90deg);
-            filter: blur(10px);
+        .hero-title-main {
+            line-height: 0.8;
+            letter-spacing: -2px;
         }
 
         .town-card {
-            background: rgba(26, 26, 26, 0.4);
-            backdrop-filter: blur(12px);
+            background: rgba(20, 20, 20, 0.6);
+            backdrop-filter: blur(15px);
             border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
         }
 
         .town-card:hover {
             border-color: var(--accent);
-            background: rgba(227, 6, 19, 0.05);
-            transform: translateY(-10px) scale(1.01);
-            box-shadow: 0 30px 60px -12px rgba(227, 6, 19, 0.15);
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5), 0 0 20px rgba(255,0,0,0.1);
         }
 
-        .map-container {
-            position: relative;
-            overflow: hidden;
-            border-radius: 2.5rem;
-            background: #000;
+        .btn-consult {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            padding: 14px 0;
+            border-radius: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 0.7rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
-        .map-container iframe {
-            filter: grayscale(1) contrast(1.2) opacity(0.6);
-            transition: all 0.8s ease;
-        }
-
-        .town-card:hover .map-container iframe {
-            filter: grayscale(0) contrast(1) opacity(1);
+        .btn-consult:hover {
+            background: var(--accent);
+            border-color: var(--accent);
             transform: scale(1.02);
+            box-shadow: 0 0 15px rgba(255,0,0,0.4);
+        }
+
+        .mobile-menu-overlay {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 100%;
+            height: 100%;
+            background: #050505;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.4s ease;
+        }
+
+        .mobile-menu-overlay.active {
+            opacity: 1;
+            pointer-events: all;
         }
 
         /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #050505; }
         ::-webkit-scrollbar-thumb { background: #ff0000; border-radius: 10px; }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
-        }
-
-        .animate-float { animation: float 6s ease-in-out infinite; }
     </style>
 </head>
 <body class="selection:bg-primary/40">
     <!-- Navbar -->
-    <nav class="fixed top-0 w-full z-50 glass-nav">
-        <div class="flex justify-between items-center px-8 sm:px-16 py-5 max-w-[1600px] mx-auto">
-            <a href="index.html" class="flex items-center gap-2 group">
-                <div class="relative">
-                    <span class="text-3xl font-black italic tracking-tighter text-primary group-hover:scale-110 transition-transform block">Inter</span>
-                    <div class="absolute -inset-2 bg-primary/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity rounded-full"></div>
-                </div>
-                <span class="text-3xl font-black italic tracking-tighter text-white">Red</span>
+    <nav class="fixed top-0 w-full z-[60] glass-nav">
+        <div class="flex justify-between items-center px-6 sm:px-12 py-4 max-w-[1600px] mx-auto">
+            <a href="index.html" class="flex items-center gap-1">
+                <span class="text-2xl font-black italic tracking-tighter text-primary">Inter</span>
+                <span class="text-2xl font-black italic tracking-tighter text-white">Red</span>
             </a>
             
-            <div class="hidden lg:flex items-center gap-16 font-headline text-[10px] font-black uppercase tracking-[0.3em] text-neutral-500">
-                <a class="nav-link py-2 relative group hover:text-white transition-colors" href="index.html#planes">Planes</a>
-                <a class="text-primary py-2 relative group" href="cobertura.html">Cobertura</a>
-                <a class="nav-link py-2 relative group hover:text-white transition-colors" href="soporte.html">Soporte</a>
+            <div class="hidden lg:flex items-center gap-12 font-headline text-[10px] font-black uppercase tracking-[0.3em] text-neutral-500">
+                <a class="hover:text-white transition-colors" href="index.html#planes">Planes</a>
+                <a class="text-primary" href="cobertura.html">Cobertura</a>
+                <a class="hover:text-white transition-colors" href="soporte.html">Soporte</a>
             </div>
 
-            <div class="flex items-center gap-6">
-                <a href="login.html" class="bg-primary hover:bg-red-700 text-white px-8 py-3 rounded-full font-headline font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-red-600/30">
+            <div class="flex items-center gap-4">
+                <a href="login.html" class="bg-primary hover:bg-red-700 text-white px-6 py-2.5 rounded-full font-headline font-black text-[9px] uppercase tracking-widest transition-all">
                     Admin Access
                 </a>
-                <button class="lg:hidden flex flex-col gap-1.5 p-2" id="btn-mobile-menu">
-                    <span class="w-7 h-0.5 bg-white rounded-full"></span>
-                    <span class="w-5 h-0.5 bg-white rounded-full self-end"></span>
+                <button id="menu-trigger" class="lg:hidden p-2 text-white">
+                    <span class="material-symbols-outlined">menu</span>
                 </button>
             </div>
         </div>
     </nav>
 
-    <main class="pt-20">
+    <!-- Mobile Menu -->
+    <div id="mobile-menu" class="mobile-menu-overlay">
+        <button id="menu-close" class="absolute top-8 right-8 text-white">
+            <span class="material-symbols-outlined text-4xl">close</span>
+        </button>
+        <a href="index.html#planes" class="text-3xl font-headline font-black uppercase tracking-widest hover:text-primary">Planes</a>
+        <a href="cobertura.html" class="text-3xl font-headline font-black uppercase tracking-widest text-primary">Cobertura</a>
+        <a href="soporte.html" class="text-3xl font-headline font-black uppercase tracking-widest hover:text-primary">Soporte</a>
+        <a href="login.html" class="mt-8 bg-primary px-10 py-4 rounded-full font-black text-[10px] uppercase tracking-[0.2em]">Admin Access</a>
+    </div>
+
+    <main class="relative">
         <!-- Hero Section -->
-        <section class="relative py-32 bg-black overflow-hidden">
-            <div class="absolute inset-0 hero-bg" id="hero-bg-img"></div>
-            <div class="absolute top-1/4 right-1/4 w-[800px] h-[800px] bg-primary/10 blur-[180px] rounded-full animate-float"></div>
+        <section class="relative min-h-screen flex items-center justify-center pt-24 pb-12 overflow-hidden">
+            <canvas id="bg-canvas"></canvas>
             
-            <div class="relative z-10 max-w-[1400px] mx-auto px-8 w-full text-center md:text-left flex flex-col md:flex-row items-center gap-20">
-                <div class="flex-1 space-y-10">
-                    <div class="inline-flex items-center gap-4 bg-white/5 border border-white/10 px-6 py-3 rounded-full backdrop-blur-2xl">
-                        <span class="text-[11px] font-black uppercase tracking-[0.4em] text-primary italic">Expansión Digital 2024</span>
-                    </div>
-                    <h1 class="font-headline text-5xl sm:text-7xl md:text-[8rem] font-black text-white leading-[0.85] tracking-tighter uppercase italic select-none" id="main-headline">
-                        <!-- Letters injected by script -->
-                    </h1>
-                    <p class="text-neutral-500 text-lg md:text-2xl font-medium leading-relaxed max-w-xl font-body italic">
-                        Nuestra red de fibra óptica premium se expande cada día más. Donde hay un hogar, hay una conexión Inter Red.
-                    </p>
+            <div class="relative z-10 w-full max-w-[1400px] mx-auto px-6 text-center">
+                <div class="mb-4">
+                    <span class="text-[10px] font-black uppercase tracking-[0.5em] text-primary italic border-b border-primary/30 pb-1">Expansión Digital</span>
                 </div>
-                <div class="flex-1 w-full max-w-2xl opacity-50 hover:opacity-100 transition-opacity">
-                    <div class="aspect-square rounded-[4rem] overflow-hidden border border-white/5 relative group">
-                        <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfNx152Csh2STqwn6gq0PrI32mHYK8LHmZxcY1JaUI-DmOIrnymS8L0wSk-cqVNkSyyTqTbumgVG4YPc7KO8v0kjx36KNcxetPzPUN9DNr9HgOEphc8zAVKz9UM0PJFuygBu9puQgAjsunLjpLO6rPNjAjDiUoHDcfqDO2KmEBGQX_tWE3hca9bcCev4rg8GLJdAE4G5XDarCWd-F7ZDmuvs9EiWnqq7f94u0R3ZjO0mFeZyUValM-2Fwm8L44-I5T0yT8o0pG15Y" alt="Red Inter Red" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-1000">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
-                    </div>
+                
+                <h1 class="font-headline text-6xl sm:text-8xl md:text-[11rem] font-black text-white italic uppercase mb-8 leading-none">
+                    COBERTURA<br/>
+                    <span class="text-white">TOTAL</span>
+                </h1>
+                
+                <p class="text-neutral-400 text-sm md:text-lg max-w-2xl mx-auto font-body italic leading-relaxed">
+                    Nuestra red de alta velocidad se expande cada día más. Conectando hogares con la mejor tecnología inalámbrica y digital de Santiago del Estero.
+                </p>
+
+                <div class="mt-12 flex justify-center animate-bounce">
+                    <span class="material-symbols-outlined text-neutral-700 text-4xl">keyboard_double_arrow_down</span>
                 </div>
             </div>
         </section>
 
-        <!-- Cobertura Grid -->
-        <section class="py-32 bg-[#080808] px-8 sm:px-16">
+        <!-- Cobertura Cities -->
+        <section class="py-24 bg-[#050505] px-6 sm:px-12 relative">
             <div class="max-w-[1400px] mx-auto">
-                <div class="flex flex-col md:flex-row md:items-end justify-between gap-12 mb-32">
-                    <div class="space-y-6">
-                        <h2 class="font-headline text-6xl sm:text-[6rem] font-black text-white tracking-tighter uppercase italic leading-[0.85]">ELEGÍ TU <br/> <span class="text-primary italic">ZONA</span></h2>
-                    </div>
+                <div class="flex items-center gap-6 mb-16">
+                    <div class="h-[1px] flex-1 bg-white/5"></div>
+                    <h2 class="font-headline text-4xl md:text-5xl font-black text-white tracking-widest uppercase italic">NUESTRAS <span class="text-primary">ZONAS</span></h2>
+                    <div class="h-[1px] flex-1 bg-white/5"></div>
                 </div>
 
-                <div id="towns-dynamic-grid" class="grid grid-cols-1 md:grid-cols-2 gap-12">
-                    <!-- Cards de Cobertura (Fallback estático) -->
-                    
-                    <!-- Choya -->
-                    <div class="town-card p-12 rounded-[4.5rem]">
-                        <div class="flex justify-between items-start mb-12">
-                            <div class="space-y-2">
-                                <h3 class="font-headline text-5xl font-black text-primary uppercase italic tracking-tighter leading-none">Choya</h3>
-                                <p class="text-neutral-500 text-[11px] font-black uppercase tracking-[0.3em] italic">Sede Central - Full High Fidelity</p>
-                            </div>
-                            <div class="bg-white/5 p-8 rounded-[2rem] border border-white/10">
-                                <span class="material-symbols-outlined text-primary text-5xl">hub</span>
-                            </div>
-                        </div>
-                        <div class="map-container h-[450px]">
-                            <iframe 
-                                class="w-full h-full"
-                                src="https://maps.google.com/maps?q=Choya,Santiago%20del%20Estero&t=&z=14&ie=UTF8&iwloc=&output=embed" 
-                                frameborder="0" scrolling="no">
-                            </iframe>
-                        </div>
-                        <a href="https://maps.app.goo.gl/c66v3Ha7CLgDHzfD7" target="_blank" class="block w-full bg-white/5 border border-white/10 mt-10 py-6 rounded-3xl text-center font-black uppercase italic tracking-[0.3em] text-xs hover:bg-white hover:text-black transition-all">Explorar Mapa</a>
-                    </div>
-
-                    <!-- Frías -->
-                    <div class="town-card p-12 rounded-[4.5rem]">
-                        <div class="flex justify-between items-start mb-12">
-                            <div class="space-y-2">
-                                <h3 class="font-headline text-5xl font-black text-primary uppercase italic tracking-tighter leading-none">Frías</h3>
-                                <p class="text-neutral-500 text-[11px] font-black uppercase tracking-[0.3em] italic">Expansión Inmediata 2024</p>
-                            </div>
-                            <div class="bg-white/5 p-8 rounded-[2rem] border border-white/10">
-                                <span class="material-symbols-outlined text-primary text-5xl">speed</span>
-                            </div>
-                        </div>
-                        <div class="map-container h-[450px]">
-                            <iframe 
-                                class="w-full h-full"
-                                src="https://maps.google.com/maps?q=Frias,Santiago%20del%20Estero&t=&z=14&ie=UTF8&iwloc=&output=embed" 
-                                frameborder="0" scrolling="no">
-                            </iframe>
-                        </div>
-                        <a href="https://maps.app.goo.gl/FpCB2YX4MW174RwV7" target="_blank" class="block w-full bg-white/5 border border-white/10 mt-10 py-6 rounded-3xl text-center font-black uppercase italic tracking-[0.3em] text-xs hover:bg-white hover:text-black transition-all">Explorar Mapa</a>
-                    </div>
+                <div id="coverage-grid" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Cards will be populated here -->
                 </div>
             </div>
         </section>
 
         <!-- Footer -->
-        <footer class="bg-[#050505] py-32 px-8 sm:px-16 border-t border-white/5">
-            <div class="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-start gap-24">
-                <div class="space-y-12">
-                    <div class="flex items-center gap-2">
-                        <span class="text-4xl font-black italic tracking-tighter text-primary">Inter</span>
-                        <span class="text-4xl font-black italic tracking-tighter text-white">Red</span>
-                    </div>
-                    <p class="text-neutral-500 font-body max-w-sm text-lg leading-relaxed italic">
-                        Uniendo cada punto del Choya con la excelencia técnica que nos caracteriza.
-                    </p>
-                </div>
+        <footer class="bg-[#030303] py-24 px-6 border-t border-white/5 text-center">
+            <div class="max-w-[1200px] mx-auto space-y-8">
+                <a href="index.html" class="flex items-center justify-center gap-1">
+                    <span class="text-4xl font-black italic tracking-tighter text-primary">Inter</span>
+                    <span class="text-4xl font-black italic tracking-tighter text-white">Red</span>
+                </a>
                 
-                <div class="text-right">
-                    <p class="text-neutral-600 text-[10px] font-black uppercase tracking-[0.4em]">© 2024 Inter Red</p>
-                    <p class="text-neutral-800 text-[9px] mt-2 italic font-medium uppercase tracking-[0.2em]">GLOBAL COBERTURA PROTOCOL</p>
+                <p class="text-neutral-400 font-body text-lg italic tracking-wide max-w-2xl mx-auto uppercase font-bold">
+                    "UNIENDO CADA PUNTO DE NUESTRA PROVINCIA CON EL MUNDO"
+                </p>
+                
+                <div class="pt-12 border-t border-white/5">
+                    <p class="text-neutral-700 text-[10px] font-black uppercase tracking-[0.4em]">© INTER RED - PREMIUM NETWORK</p>
                 </div>
             </div>
         </footer>
     </main>
 
     <script>
-        gsap.registerPlugin(ScrollTrigger);
-
-        function animateHeadline() {
-            const headline = document.getElementById('main-headline');
-            const text = "COBERTURA TOTAL";
-            headline.innerHTML = text.split('').map(char => 
-                char === ' ' ? '<span class="px-4"></span>' : `<span class="stagger-letter">${char}</span>`
-            ).join('');
-
-            gsap.to('.stagger-letter', {
-                opacity: 1,
-                y: 0,
-                rotateX: 0,
-                filter: 'blur(0px)',
-                duration: 1.2,
-                stagger: 0.05,
-                ease: 'expo.out'
-            });
+        // Interactive Background
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
         }
 
-        // Parallax Effect
-        window.addEventListener('mousemove', (e) => {
-            const { clientX, clientY } = e;
-            const x = (clientX / window.innerWidth - 0.5) * 50;
-            const y = (clientY / window.innerHeight - 0.5) * 50;
-            
-            gsap.to('#hero-bg-img', {
-                x: x,
-                y: y,
-                duration: 3,
-                ease: 'power2.out'
-            });
-        });
-
-        // Scroll Reveal
-        gsap.utils.toArray('.town-card').forEach(card => {
-            gsap.from(card, {
-                scrollTrigger: {
-                    trigger: card,
-                    start: 'top 90%',
-                },
-                opacity: 0,
-                y: 100,
-                duration: 1.5,
-                ease: 'expo.out'
-            });
-        });
-
-        async function loadCmsContent() {
-            try {
-                const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:3000' : '';
-                const res = await fetch(`${baseUrl}/api/cms/config`);
-                const data = await res.json();
-                
-                if (data.towns) {
-                    const grid = document.getElementById('towns-dynamic-grid');
-                    grid.innerHTML = '';
-                    
-                    data.towns.forEach((town, index) => {
-                        const card = document.createElement('div');
-                        card.className = `town-card p-12 rounded-[4.5rem] flex flex-col gap-8 ${index === data.towns.length - 1 && data.towns.length % 2 !== 0 ? 'md:col-span-2' : ''}`;
-                        
-                        card.innerHTML = `
-                            <div class="flex justify-between items-start mb-8">
-                                <div class="space-y-2">
-                                    <h3 class="font-headline text-5xl font-black text-primary uppercase italic tracking-tighter leading-none">${town.name}</h3>
-                                    <p class="text-neutral-500 text-[11px] font-black uppercase tracking-[0.3em] italic">${town.label}</p>
-                                </div>
-                                <div class="bg-white/5 p-8 rounded-[2rem] border border-white/10">
-                                    <span class="material-symbols-outlined text-primary text-5xl">location_on</span>
-                                </div>
-                            </div>
-                            <div class="map-container h-[450px]">
-                                <iframe class="w-full h-full" src="${town.mapUrl}" frameborder="0" scrolling="no"></iframe>
-                            </div>
-                            <a href="${town.fullUrl}" target="_blank" class="block w-full bg-white/5 border border-white/10 mt-10 py-6 rounded-3xl text-center font-black uppercase italic tracking-[0.3em] text-xs hover:bg-white hover:text-black transition-all">Explorar Mapa</a>
-                        `;
-                        grid.appendChild(card);
-                    });
-                }
-            } catch (err) {
-                console.warn('CMS: Usando contenido estático.');
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.size = Math.random() * 2;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if(this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if(this.y < 0 || this.y > canvas.height) this.vy *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+                ctx.fill();
             }
         }
 
+        function init() {
+            particles = [];
+            for(let i=0; i<100; i++) particles.push(new Particle());
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach((p, i) => {
+                p.update();
+                p.draw();
+                for(let j=i+1; j<particles.length; j++) {
+                    let d = Math.hypot(p.x - particles[j].x, p.y - particles[j].y);
+                    if(d < 150) {
+                        ctx.beginPath();
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.strokeStyle = `rgba(255, 0, 0, ${0.15 * (1 - d/150)})`;
+                        ctx.stroke();
+                    }
+                }
+            });
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+        init();
+        animate();
+
+        // CMS Content / Towns Data
+        const towns = [
+            { name: 'Choya', label: 'Sede Central', map: 'Choya,Santiago+del+Estero' },
+            { name: 'Frías', label: 'Zona Norte', map: 'Frias,Santiago+del+Estero' },
+            { name: 'Sol de Mayo', label: 'Cobertura Ampliada', map: 'Sol+de+Mayo,Santiago+del+Estero' },
+            { name: 'Villa La Punta', label: 'Expansión Rural', map: 'Villa+La+Punta,Santiago+del+Estero' }
+        ];
+
+        function renderTowns() {
+            const grid = document.getElementById('coverage-grid');
+            grid.innerHTML = towns.map(t => `
+                <div class="town-card p-10 rounded-[3rem] overflow-hidden">
+                    <div class="flex justify-between items-start mb-8">
+                        <div>
+                            <h3 class="font-headline text-4xl font-black text-primary uppercase italic">${t.name}</h3>
+                            <p class="text-neutral-500 text-[9px] font-black uppercase tracking-[0.3em] font-body mt-1 ml-1">${t.label}</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-full border border-primary/20 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-primary text-xl">satellite_alt</span>
+                        </div>
+                    </div>
+                    <div class="h-64 rounded-[2rem] overflow-hidden border border-white/5 grayscale hover:grayscale-0 transition-all duration-700">
+                        <iframe class="w-full h-full opacity-60" src="https://maps.google.com/maps?q=${t.map}&t=k&z=15&ie=UTF8&iwloc=&output=embed" frameborder="0"></iframe>
+                    </div>
+                    <div class="mt-8 grid grid-cols-2 gap-4">
+                        <a href="https://maps.google.com/maps?q=${t.map}" target="_blank" class="bg-white/5 hover:bg-white/10 text-[9px] font-black py-4 rounded-xl text-center uppercase tracking-widest transition-all">Ver Mapa</a>
+                        <a href="https://wa.me/5493854123456?text=Hola,%20quiero%20consultar%20por%20cobertura%20en%20${t.name}" class="btn-consult text-[9px]">
+                            <span class="material-symbols-outlined text-xs">chat</span>
+                            CONSULTAR
+                        </a>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Mobile Menu Logic
+        const menuTrigger = document.getElementById('menu-trigger');
+        const menuClose = document.getElementById('menu-close');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        menuTrigger.onclick = () => mobileMenu.classList.add('active');
+        menuClose.onclick = () => mobileMenu.classList.remove('active');
+
         document.addEventListener('DOMContentLoaded', () => {
-            animateHeadline();
-            loadCmsContent();
+            renderTowns();
+            gsap.from('h1', { opacity: 0, y: 50, duration: 1.5, ease: 'expo.out' });
         });
     </script>
 </body>
