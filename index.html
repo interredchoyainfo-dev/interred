@@ -155,17 +155,23 @@
             toggleIcon.textContent = type === 'password' ? 'visibility' : 'visibility_off';
         });
 
-        async function performLogin(user, pass) {
-            const endpoints = [
-                '/api/auth/login',
-                'http://localhost:3000/api/auth/login'
-            ];
+        async function performLogin(user, pass, onSlow) {
+            const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+            
+            const endpoints = isLocal 
+                ? ['/api/auth/login', 'http://localhost:3000/api/auth/login', 'https://interred-api.onrender.com/api/auth/login']
+                : ['https://interred-api.onrender.com/api/auth/login', '/api/auth/login'];
+
+            let slowTimer = setTimeout(() => {
+                if (typeof onSlow === 'function') onSlow();
+            }, 3000);
 
             let lastError = null;
             for (const endpoint of endpoints) {
                 try {
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 6000);
+                    // 40 seconds timeout for Render cold start
+                    const timeoutId = setTimeout(() => controller.abort(), 40000);
 
                     const res = await fetch(endpoint, {
                         method: 'POST',
@@ -174,6 +180,7 @@
                         signal: controller.signal
                     });
                     clearTimeout(timeoutId);
+                    clearTimeout(slowTimer);
 
                     const data = await res.json();
                     return data;
@@ -181,6 +188,7 @@
                     lastError = err;
                 }
             }
+            clearTimeout(slowTimer);
             throw lastError || new Error('No se pudo conectar al servidor backend');
         }
 
@@ -192,11 +200,17 @@
 
             const submitBtn = e.target.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
-            submitBtn.innerHTML = 'VERIFICANDO...';
+            submitBtn.innerHTML = `
+                <span class="inline-block animate-spin mr-2">⏳</span> VERIFICANDO...
+            `;
             submitBtn.disabled = true;
 
             try {
-                const result = await performLogin(user, pass);
+                const result = await performLogin(user, pass, () => {
+                    submitBtn.innerHTML = `
+                        <span class="inline-block animate-spin mr-2">🌐</span> CONECTANDO NUBE...
+                    `;
+                });
                 
                 if (result && result.success) {
                     if (result.token) {
@@ -215,9 +229,9 @@
                     setTimeout(() => errorAlert.classList.add('hidden'), 4000);
                 }
             } catch (error) {
-                errorAlert.textContent = 'Error de conexión con el servidor (Asegúrate que el backend esté activo).';
+                errorAlert.textContent = 'Error de conexión con el servidor en la nube. Reintentá en unos segundos.';
                 errorAlert.classList.remove('hidden');
-                setTimeout(() => errorAlert.classList.add('hidden'), 4000);
+                setTimeout(() => errorAlert.classList.add('hidden'), 5000);
             } finally {
                 submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;
