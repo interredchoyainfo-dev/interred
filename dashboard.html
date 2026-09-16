@@ -188,11 +188,16 @@
                         <input type="text" id="search-clients" placeholder="Buscar cliente..." class="search-input">
                     </div>
                     <div class="filter-chips" id="filter-chips">
-                        <button class="chip active" data-zone="ALL">Todos</button>
+                        <button class="chip active" data-zone="ALL">Todos los Pueblos</button>
                         <button class="chip" data-zone="SOL DE MAYO">Sol de Mayo</button>
                         <button class="chip" data-zone="VILLA LA PUNTA">Villa La Punta</button>
                         <button class="chip" data-zone="CHOYA">Choya</button>
                         <button class="chip" data-zone="FRIAS">Frías</button>
+                    </div>
+                    <div class="filter-chips" id="client-status-filter-chips" style="margin-top: 8px;">
+                        <button class="chip active" data-status="ALL">Todos</button>
+                        <button class="chip" data-status="PAID" style="color: var(--accent-green);">Pagados</button>
+                        <button class="chip" data-status="PENDING" style="color: var(--accent-red);">Pendientes</button>
                     </div>
                     <!-- Clients List -->
                     <div class="clients-list" id="clients-list">

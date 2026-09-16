@@ -135,6 +135,7 @@ const App = {
     currentMonth: new Date().getMonth() + 1,
     currentYear: new Date().getFullYear(),
     currentZoneFilter: 'ALL',
+    currentClientStatusFilter: 'ALL',
     currentPaymentZoneFilter: 'ALL',
     currentPaymentStatusFilter: 'ALL',
     confirmCallback: null,
@@ -592,15 +593,29 @@ const App = {
         const clients = DB.getClients();
         let filtered = clients;
 
-        // Sync filter chips UI
+        // Sync zone filter chips UI
         document.querySelectorAll('#filter-chips .chip').forEach(c => {
             const isMatch = (c.dataset.zone || '').toUpperCase() === (this.currentZoneFilter || 'ALL').toUpperCase();
+            c.classList.toggle('active', isMatch);
+        });
+
+        // Sync client status filter chips UI
+        document.querySelectorAll('#client-status-filter-chips .chip').forEach(c => {
+            const isMatch = (c.dataset.status || '').toUpperCase() === (this.currentClientStatusFilter || 'ALL').toUpperCase();
             c.classList.toggle('active', isMatch);
         });
 
         // Filter by zone
         if (this.currentZoneFilter && this.currentZoneFilter !== 'ALL') {
             filtered = filtered.filter(c => (c.zona || '').toUpperCase() === this.currentZoneFilter.toUpperCase());
+        }
+
+        // Filter by payment status (PAID vs PENDING)
+        if (this.currentClientStatusFilter && this.currentClientStatusFilter !== 'ALL') {
+            filtered = filtered.filter(c => {
+                const isPaid = DB.hasPaymentForMonth(c.id, this.currentMonth, this.currentYear);
+                return this.currentClientStatusFilter === 'PAID' ? isPaid : !isPaid;
+            });
         }
 
         // Filter by search
@@ -1231,6 +1246,16 @@ const App = {
                 document.querySelectorAll('#filter-chips .chip').forEach(c => c.classList.remove('active'));
                 chip.classList.add('active');
                 this.currentZoneFilter = chip.dataset.zone;
+                this.renderClients();
+            });
+        });
+
+        // Client status chips (Todos, Pagados, Pendientes)
+        document.querySelectorAll('#client-status-filter-chips .chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('#client-status-filter-chips .chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                this.currentClientStatusFilter = chip.dataset.status;
                 this.renderClients();
             });
         });
