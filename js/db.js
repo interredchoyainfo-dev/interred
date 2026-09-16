@@ -50,67 +50,47 @@ const DB = {
 
     // ---- Listeners setup ----
     init() {
-        console.log('🔥 Initializing Firebase Sync...');
-        this.checkMigrationNeeded();
+        console.log('🔥 Initializing Firebase Cloud Sync...');
 
         try {
             // Listen for Clients
             onSnapshot(collection(db, "clients"), (snapshot) => {
                 const cloudData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                const isMigrated = localStorage.getItem('interred_firebase_migrated');
-                const hasLocal = JSON.parse(localStorage.getItem('interred_clients') || '[]').length > 0;
-
-                if (isMigrated || (cloudData.length > 0 && !hasLocal)) {
-                    CACHE.clients = safeArray(cloudData).map(normalizeCliente);
-                    safeLocalSet('interred_clients', CACHE.clients);
-                    console.log('👥 Clients synced:', CACHE.clients.length);
-                    if (window.App && window.App.refreshCurrentView) window.App.refreshCurrentView();
-                }
+                CACHE.clients = safeArray(cloudData).map(normalizeCliente);
+                safeLocalSet('interred_clients', CACHE.clients);
+                console.log('👥 Clients synced from Firebase:', CACHE.clients.length);
+                if (window.App && window.App.refreshCurrentView) window.App.refreshCurrentView();
             }, (err) => console.warn('Firebase clients listener error:', err.message));
 
             // Listen for Payments
             onSnapshot(collection(db, "payments"), (snapshot) => {
                 const cloudData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                const isMigrated = localStorage.getItem('interred_firebase_migrated');
-                const hasLocal = JSON.parse(localStorage.getItem('interred_payments') || '[]').length > 0;
-
-                if (isMigrated || (cloudData.length > 0 && !hasLocal)) {
-                    CACHE.payments = safeArray(cloudData);
-                    safeLocalSet('interred_payments', CACHE.payments);
-                    console.log('💰 Payments synced:', CACHE.payments.length);
-                    if (window.App && window.App.refreshCurrentView) window.App.refreshCurrentView();
-                }
+                CACHE.payments = safeArray(cloudData);
+                safeLocalSet('interred_payments', CACHE.payments);
+                console.log('💰 Payments synced from Firebase:', CACHE.payments.length);
+                if (window.App && window.App.refreshCurrentView) window.App.refreshCurrentView();
             }, (err) => console.warn('Firebase payments listener error:', err.message));
 
             // Listen for Morosos
             onSnapshot(collection(db, "morosos"), (snapshot) => {
                 const cloudData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                const isMigrated = localStorage.getItem('interred_firebase_migrated');
-                const hasLocal = JSON.parse(localStorage.getItem('interred_morosos') || '[]').length > 0;
-
-                if (isMigrated || (cloudData.length > 0 && !hasLocal)) {
-                    CACHE.morosos = safeArray(cloudData);
-                    safeLocalSet('interred_morosos', CACHE.morosos);
-                    console.log('⚠️ Morosos synced:', CACHE.morosos.length);
-                    if (window.App && window.App.refreshCurrentView) window.App.refreshCurrentView();
-                }
+                CACHE.morosos = safeArray(cloudData);
+                safeLocalSet('interred_morosos', CACHE.morosos);
+                console.log('⚠️ Morosos synced from Firebase:', CACHE.morosos.length);
+                if (window.App && window.App.refreshCurrentView) window.App.refreshCurrentView();
             }, (err) => console.warn('Firebase morosos listener error:', err.message));
 
             // Listen for Settings
             onSnapshot(doc(db, "config", "settings"), (snapshot) => {
                 if (snapshot.exists()) {
-                    const isMigrated = localStorage.getItem('interred_firebase_migrated');
-                    const hasLocal = localStorage.getItem('interred_settings') !== null;
-                    
-                    if (isMigrated || !hasLocal) {
-                        CACHE.settings = safeObject(snapshot.data());
-                        safeLocalSet('interred_settings', CACHE.settings);
-                        console.log('⚙️ Settings synced');
-                    }
+                    CACHE.settings = safeObject(snapshot.data());
+                    safeLocalSet('interred_settings', CACHE.settings);
+                    console.log('⚙️ Settings synced from Firebase');
+                    if (window.App && window.App.loadSettings) window.App.loadSettings();
                 }
             }, (err) => console.warn('Firebase settings listener error:', err.message));
         } catch (e) {
-            console.error('🔥 Firebase init failed (will use local data):', e.message);
+            console.error('🔥 Firebase init failed:', e.message);
         }
     },
 

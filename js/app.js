@@ -1,5 +1,4 @@
 import DB from './db.js';
-import SEED_DATA from './seed-data.js';
 import { API_URL } from './config.js';
 import { getNextDebtor, getPriorityDebtors } from './collectionService.js';
 import { 
@@ -167,12 +166,8 @@ const App = {
 
         // Auth Check V2
         if (!isAuthenticated()) {
-            const user = prompt('Usuario:');
-            const pass = prompt('Contraseña:');
-            if (!await checkLogin(user, pass)) {
-                window.location.href = 'login.html';
-                return;
-            }
+            window.location.replace('index.html');
+            return;
         }
 
         // ===== STEP 1: Bind all UI elements FIRST (synchronous, never fails) =====
@@ -221,22 +216,9 @@ const App = {
             this.initMikrotikChart();
         }, 1800);
 
-        // ===== STEP 2: Async operations (may fail if Firebase is not ready) =====
+        // ===== STEP 2: Async operations =====
         showServerStatus("online");
-        let wasSeeded = false;
-        try {
-            wasSeeded = await SEED_DATA.run();
-        } catch (e) {
-            log('⚠️ Seed data failed (Firebase may not be configured yet):', e.message);
-        }
-
         this.checkAutomationTriggers();
-
-        if (wasSeeded) {
-            setTimeout(() => {
-                this.showToast('✅ 135 clientes precargados en la base de datos', 'success');
-            }, 2500);
-        }
     },
 
     // ========================================
@@ -305,6 +287,12 @@ const App = {
     bindHeaderActions() {
         this._bind('btn-notifications', () => {
             this.navigate('notifications');
+        });
+        
+        this._bind('btn-logout', () => {
+            sessionStorage.removeItem('auth');
+            sessionStorage.removeItem('interred_api_token');
+            window.location.replace('index.html');
         });
         
         this._bind('btn-reset-month', () => this.confirmReset());
@@ -380,11 +368,14 @@ const App = {
         this.handleRoute(view, params);
     },
 
-    handleRoute(view, params) {
-        // Handle specific route logic if needed (like zone filters)
-        if (view === 'clients' && params[0]) {
-            this.currentZoneFilter = decodeURIComponent(params[0]);
-            // Update filter chip UI after transition
+    handleRoute(view, params = []) {
+        // Handle specific route logic (like zone filters)
+        if (view === 'clients') {
+            if (params && params[0]) {
+                this.currentZoneFilter = decodeURIComponent(params[0]);
+            } else {
+                this.currentZoneFilter = 'ALL';
+            }
         }
 
         this.navigateTo(view, false);
@@ -434,11 +425,6 @@ const App = {
         switch (viewName) {
             case 'dashboard': this.renderDashboard(); break;
             case 'clients': 
-                if (updateURL) {
-                    this.currentZoneFilter = 'ALL';
-                    const searchInput = document.getElementById('search-clients');
-                    if (searchInput) searchInput.value = '';
-                }
                 this.renderClients(); 
                 break;
             case 'payments': 
@@ -504,7 +490,7 @@ const App = {
         const zonesGrid = document.getElementById('zones-grid');
         if (!zonesGrid) return;
         zonesGrid.innerHTML = safeArray(stats.zoneStats).map(z => `
-            <div class="zone-card" data-zone="${z.zone}">
+            <div class="zone-card" data-zone="${z.zone}" role="button" tabindex="0" title="Ver clientes de ${z.zone}">
                 <div class="zone-name">${z.zone}</div>
                 <div class="zone-count">${z.total} <small>clientes</small></div>
                 <div class="zone-revenue-mini">
@@ -517,6 +503,14 @@ const App = {
                 </div>
             </div>
         `).join('');
+
+        // Bind Zone Card Clicks
+        zonesGrid.querySelectorAll('.zone-card').forEach(card => {
+            card.onclick = () => {
+                const zone = card.dataset.zone;
+                if (zone) this.navigateToZone(zone);
+            };
+        });
 
         // Render debt list
         const debtList = document.getElementById('debt-list');
@@ -586,11 +580,9 @@ const App = {
 
     navigateToZone(zone) {
         this.currentZoneFilter = zone;
+        const searchInput = document.getElementById('search-clients');
+        if (searchInput) searchInput.value = '';
         this.navigate('clients', [zone]);
-        // Set filter chip
-        document.querySelectorAll('#filter-chips .chip').forEach(c => {
-            c.classList.toggle('active', c.dataset.zone === zone);
-        });
     },
 
     // ========================================
@@ -600,9 +592,15 @@ const App = {
         const clients = DB.getClients();
         let filtered = clients;
 
+        // Sync filter chips UI
+        document.querySelectorAll('#filter-chips .chip').forEach(c => {
+            const isMatch = (c.dataset.zone || '').toUpperCase() === (this.currentZoneFilter || 'ALL').toUpperCase();
+            c.classList.toggle('active', isMatch);
+        });
+
         // Filter by zone
-        if (this.currentZoneFilter !== 'ALL') {
-            filtered = filtered.filter(c => c.zona === this.currentZoneFilter);
+        if (this.currentZoneFilter && this.currentZoneFilter !== 'ALL') {
+            filtered = filtered.filter(c => (c.zona || '').toUpperCase() === this.currentZoneFilter.toUpperCase());
         }
 
         // Filter by search
