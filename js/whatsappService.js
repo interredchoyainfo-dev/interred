@@ -19,21 +19,88 @@ export function generateMessage(template, data) {
 }
 
 /**
+ * Formatea cualquier número de teléfono argentino al formato oficial de WhatsApp (549 + código de área + número)
+ * Corrige prefijos como 9385..., 0385..., 15..., 5499..., +54...
+ */
+export function formatWhatsAppNumber(phone) {
+    if (!phone) return '';
+    let digits = phone.toString().replace(/\D/g, '');
+    if (!digits) return '';
+
+    // Si empieza con 0 (ej: 03856...), quitar el 0 inicial
+    if (digits.startsWith('0')) {
+        digits = digits.substring(1);
+    }
+
+    // Si empieza con 5499 (bug de doble 9 ej: 5499385...), corregir a 549
+    if (digits.startsWith('5499') && digits.length >= 13) {
+        digits = '549' + digits.substring(4);
+    }
+
+    // Si ya empieza con 549 (ej: 5493856...), ya está en formato internacional
+    if (digits.startsWith('549')) {
+        return digits;
+    }
+
+    // Si empieza con 54 seguido de código de área (ej: 543856...), insertar 9 para celular
+    if (digits.startsWith('54') && digits.length >= 12) {
+        return '549' + digits.substring(2);
+    }
+
+    // Si empieza con 9 y tiene 11 dígitos (ej: 93856979378 -> 9 + 10 dígitos)
+    if (digits.startsWith('9') && digits.length === 11) {
+        return '549' + digits.substring(1);
+    }
+
+    // Si tiene 10 dígitos estándar (ej: 3856979378)
+    if (digits.length === 10) {
+        return '549' + digits;
+    }
+
+    // Si tiene más de 10 dígitos y empieza con 9
+    if (digits.startsWith('9') && digits.length > 10) {
+        return '549' + digits.substring(1);
+    }
+
+    // Fallback general asegurando prefijo 549
+    return digits.startsWith('54') 
+        ? (digits.startsWith('549') ? digits : `549${digits.substring(2)}`) 
+        : `549${digits}`;
+}
+
+/**
  * Genera el link de WhatsApp para un número y mensaje
  */
 export function generateWhatsAppLink(phone, message) {
-    const cleaned = phone.replace(/\D/g, '');
-    const number = cleaned.startsWith('54') ? cleaned : `549${cleaned}`;
-    return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+    const formatted = formatWhatsAppNumber(phone);
+    if (!formatted) return '';
+    return `https://api.whatsapp.com/send?phone=${formatted}&text=${encodeURIComponent(message || '')}`;
 }
 
 /**
  * Abre WhatsApp para un cliente individual y guarda el log
  */
 export function sendWhatsApp(phone, message, clientName = '') {
+    if (!phone || phone.toString().trim() === '') {
+        if (window.App && window.App.showToast) {
+            window.App.showToast('⚠️ El cliente no tiene teléfono registrado', 'warning');
+        } else {
+            alert('El cliente no tiene teléfono registrado');
+        }
+        return false;
+    }
     const link = generateWhatsAppLink(phone, message);
+    if (!link) {
+        if (window.App && window.App.showToast) {
+            window.App.showToast('⚠️ Número de teléfono inválido', 'error');
+        } else {
+            alert('Número de teléfono inválido');
+        }
+        return false;
+    }
     window.open(link, '_blank');
     saveMessageLog({ phone, message, client: clientName, timestamp: Date.now() });
+    return true;
 }
 
 /**

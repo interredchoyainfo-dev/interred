@@ -1406,21 +1406,23 @@ const App = {
         const btnSuspension = document.getElementById('btn-msg-suspension');
         const btnPaid = document.getElementById('btn-msg-paid');
 
+        const clientFullName = `${client.nombre} ${client.apellido || ''}`.trim();
+
         btnVencimiento.onclick = () => {
             const message = getMessageByType(client, settings, '10');
-            sendWhatsApp(client.whatsapp, message, client.nombre);
+            sendWhatsApp(client.whatsapp, message, clientFullName);
             this.closeModal('modal-whatsapp-select');
         };
 
         btnSuspension.onclick = () => {
             const message = getMessageByType(client, settings, '13');
-            sendWhatsApp(client.whatsapp, message, client.nombre);
+            sendWhatsApp(client.whatsapp, message, clientFullName);
             this.closeModal('modal-whatsapp-select');
         };
 
         btnPaid.onclick = () => {
             const message = `Hola ${client.nombre}, gracias por tu pago de INTER RED. ¡Que tengas un buen día!`;
-            sendWhatsApp(client.whatsapp, message, client.nombre);
+            sendWhatsApp(client.whatsapp, message, clientFullName);
             this.closeModal('modal-whatsapp-select');
         };
 
