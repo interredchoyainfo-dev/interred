@@ -297,40 +297,92 @@ const DB = {
 
     // ---- Settings ----
     getSettings() {
+        const DEFAULT_ROUTERS = [
+            {
+                id: 'router_choya',
+                name: 'Choya',
+                zone: 'CHOYA',
+                host: 'server3.remotemikrotik.com',
+                port: '7123',
+                winboxPort: '1123',
+                webPort: '4123',
+                user: 'RDEzsi9e',
+                password: 'KTU0jNfC',
+                sstpHost: 'server3.remotemikrotik.com',
+                sstpUser: 'RM17897139173291',
+                sstpPassword: 'uEBljNhlSO',
+                addressList: 'morosos',
+                active: true,
+                comment: 'Choya - RemoteMikrotik RM17897139173291'
+            },
+            {
+                id: 'router_frias',
+                name: 'Frías',
+                zone: 'FRIAS',
+                host: 'server3.remotemikrotik.com',
+                port: '7062',
+                winboxPort: '1062',
+                webPort: '4062',
+                user: 'uGI51319',
+                password: 'EkJlv1Kb',
+                sstpHost: 'server3.remotemikrotik.com',
+                sstpUser: 'RM17904066944449',
+                sstpPassword: 'hstdmWHnWV',
+                addressList: 'morosos',
+                active: true,
+                comment: 'Frías - RemoteMikrotik RM17904066944449'
+            }
+        ];
+
         const defaultSettings = {
             defaultAmount: 30000,
             phone: '3855374835',
             reminder10Enabled: true,
             reminder13Enabled: true,
-            message10: 'Hola {nombre}, te saludamos de INTER RED \uD83C\uDF10. Te recordamos que hoy d\u00EDa 10 vence tu abono mensual de internet por un valor de ${monto}.\n\nEvit\u00E1 recargos y cortes en el servicio. Si ya realizaste el pago, por favor envi\u00E1 el comprobante por este medio.\n\n\uD83D\uDCCD Ubicaci\u00F3n: Choya, Sgo. del Estero.\n\uD83D\uDCDE Dudas: {telefono}.',
-            message13: '\u26A0\uFE0F AVISO IMPORTANTE - INTER RED \u26A0\uFE0F\n\nHola {nombre}, no hemos registrado el pago de tu servicio este mes.\n\nTe informamos que a partir de este momento tu velocidad de navegaci\u00F3n ha sido reducida. Para normalizar tu servicio, por favor regulariz\u00E1 tu deuda de ${monto}.\n\nContacto: {telefono}. \u00A1Gracias!',
-            routers: [
-              {
-                name: 'Router Principal',
-                host: '',
-                port: '8728',
-                user: '',
-                password: '',
-                addressList: 'morosos'
-              }
-            ],
+            message10: 'Hola {nombre}, te saludamos de INTER RED 🌐. Te recordamos que hoy día 10 vence tu abono mensual de internet por un valor de ${monto}.\n\nEvitá recargos y cortes en el servicio. Si ya realizaste el pago, por favor enviá el comprobante por este medio.\n\n📍 Ubicación: Choya, Sgo. del Estero.\n📞 Dudas: {telefono}.',
+            message13: '⚠️ AVISO IMPORTANTE - INTER RED ⚠️\n\nHola {nombre}, no hemos registrado el pago de tu servicio este mes.\n\nTe informamos que a partir de este momento tu velocidad de navegación ha sido reducida. Para normalizar tu servicio, por favor regularizá tu deuda de ${monto}.\n\nContacto: {telefono}. ¡Gracias!',
+            routers: DEFAULT_ROUTERS,
             activeRouterIndex: 0
         };
 
-        if (!CACHE.settings.routers) {
-            // Legacy migration: if they have old settings, put them into the first router
-            if (CACHE.settings.mikrotikHost) {
-                defaultSettings.routers[0] = {
-                    name: 'Router Principal',
-                    host: CACHE.settings.mikrotikHost,
-                    port: CACHE.settings.mikrotikPort || '8728',
-                    user: CACHE.settings.mikrotikUser || '',
-                    password: CACHE.settings.mikrotikPassword || '',
-                    addressList: CACHE.settings.mikrotikAddressList || 'morosos'
-                };
-            }
+        if (!CACHE.settings.routers || !Array.isArray(CACHE.settings.routers) || CACHE.settings.routers.length === 0) {
             return defaultSettings;
         }
+
+        // Filtramos routers obsoletos (ej. IPs o dominios viejos que ya no se usan)
+        const isObsolete = (r) => {
+            if (!r || !r.host) return true;
+            const h = (r.host || '').toLowerCase();
+            const u = (r.user || '').toLowerCase();
+            return h.includes('mynetname.net') || h === '190.136.126.129' || h === '179.238.45.72' || u === 'mamitamamita' || r.name === 'Router Principal' && !h.includes('remotemikrotik');
+        };
+
+        const cleanedRouters = CACHE.settings.routers.filter(r => !isObsolete(r));
+
+        // Si después de limpiar no queda ninguno o falta alguno de los principales, aseguramos Choya y Frías
+        if (cleanedRouters.length === 0) {
+            CACHE.settings.routers = DEFAULT_ROUTERS;
+        } else {
+            // Asegurar que cada router tenga active: true si no está especificado
+            cleanedRouters.forEach(r => {
+                if (r.active === undefined) r.active = true;
+            });
+
+            // Si no está Choya, agregarlo
+            if (!cleanedRouters.some(r => (r.zone || '').toUpperCase() === 'CHOYA' || (r.name || '').toLowerCase().includes('choya'))) {
+                cleanedRouters.unshift(DEFAULT_ROUTERS[0]);
+            }
+            // Si no está Frías, agregarlo
+            if (!cleanedRouters.some(r => (r.zone || '').toUpperCase() === 'FRIAS' || (r.name || '').toLowerCase().includes('frias') || (r.name || '').toLowerCase().includes('frías'))) {
+                cleanedRouters.push(DEFAULT_ROUTERS[1]);
+            }
+            CACHE.settings.routers = cleanedRouters;
+        }
+
+        if (CACHE.settings.activeRouterIndex >= CACHE.settings.routers.length) {
+            CACHE.settings.activeRouterIndex = 0;
+        }
+
         return CACHE.settings;
     },
 

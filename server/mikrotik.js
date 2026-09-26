@@ -23,15 +23,23 @@ function safeName(name) {
 }
 
 async function withMikrotik(config, callback) {
-    console.log(`[withMikrotik] Conectando a ${config.host} como ${config.user}...`);
-    const api = new RouterOSClient({
-        host: config.host,
-        port: config.port || 8729,
-        user: config.user,
-        password: config.password,
-        keepalive: false,
-        tls: { rejectUnauthorized: false }
-    });
+    const port = parseInt(config?.port || 8728);
+    const useTLS = config?.ssl !== undefined ? !!config.ssl : (port === 8729);
+
+    console.log(`[withMikrotik] Conectando a ${config?.host}:${port} (TLS: ${useTLS}) como ${config?.user}...`);
+    const clientOptions = {
+        host: config?.host,
+        port: port,
+        user: config?.user,
+        password: config?.password,
+        keepalive: false
+    };
+
+    if (useTLS) {
+        clientOptions.tls = { rejectUnauthorized: false };
+    }
+
+    const api = new RouterOSClient(clientOptions);
 
     api.on('error', (err) => {
         console.error('❌ [withMikrotik] Error de evento API:', err.message);
@@ -167,16 +175,50 @@ async function handleQueue(api, ip, clientName, shouldBeReduced) {
     }
 }
 
-// 🔴 REDUCIR (crea/habilita la cola a 1k/1k)
-export async function reduceClient(config, ip, clientName = 'Cliente') {
-    if (!isValidIP(ip.split('/')[0])) return { success: false, message: 'IP inválida' };
-    return withMikrotik(config, (api) => handleQueue(api, ip, clientName, true));
+async function handleAddressList(api, ip, listName = 'morosos', isSuspended = true) {
+    if (!listName) return;
+    const cleanIP = ip.split('/')[0].trim();
+    try {
+        const addressListMenu = api.menu('/ip/firewall/address-list');
+        const existing = await addressListMenu.get({ '?address': cleanIP, '?list': listName });
+        
+        if (isSuspended) {
+            if (!existing || existing.length === 0) {
+                await addressListMenu.add({ address: cleanIP, list: listName, comment: 'Corte INTER RED' });
+                console.log(`[handleAddressList] ✅ IP ${cleanIP} agregada a lista "${listName}"`);
+            }
+        } else {
+            if (existing && existing.length > 0) {
+                for (const item of existing) {
+                    const realId = item['.id'] || item.id;
+                    if (realId) await addressListMenu.remove(realId);
+                }
+                console.log(`[handleAddressList] ✅ IP ${cleanIP} removida de lista "${listName}"`);
+            }
+        }
+    } catch (err) {
+        console.warn(`[handleAddressList] ⚠️ Aviso address-list:`, err.message);
+    }
 }
 
-// 🟢 ACTIVAR (deshabilita la cola — navegación libre)
+// 🔴 REDUCIR / CORTAR (Cola a 1k/1k + Address List Morosos)
+export async function reduceClient(config, ip, clientName = 'Cliente') {
+    if (!isValidIP(ip.split('/')[0])) return { success: false, message: 'IP inválida' };
+    return withMikrotik(config, async (api) => {
+        const resQueue = await handleQueue(api, ip, clientName, true);
+        await handleAddressList(api, ip, config?.addressList || 'morosos', true);
+        return resQueue;
+    });
+}
+
+// 🟢 ACTIVAR (Cola Deshabilitada + Remover de Address List)
 export async function activateClient(config, ip, clientName = 'Cliente') {
     if (!isValidIP(ip.split('/')[0])) return { success: false, message: 'IP inválida' };
-    return withMikrotik(config, (api) => handleQueue(api, ip, clientName, false));
+    return withMikrotik(config, async (api) => {
+        const resQueue = await handleQueue(api, ip, clientName, false);
+        await handleAddressList(api, ip, config?.addressList || 'morosos', false);
+        return resQueue;
+    });
 }
 
 export const suspendClient = reduceClient;

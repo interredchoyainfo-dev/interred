@@ -11,7 +11,11 @@
         try {
             const session = JSON.parse(sessionStorage.getItem('auth') || '{}');
             if (session && session.auth) {
-                window.location.replace('dashboard.html');
+                if (window.location.pathname === '/mikrotik' || window.location.hash.includes('mikrotik')) {
+                    window.location.replace('dashboard.html#mikrotik');
+                } else {
+                    window.location.replace('dashboard.html');
+                }
             }
         } catch (e) {}
     </script>

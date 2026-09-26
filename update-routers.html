@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Actualizar Routers MikroTik - INTER RED</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        .font-body { font-family: "Plus Jakarta Sans", sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-900 font-body min-h-screen flex items-center justify-center p-6">
+    <div class="bg-slate-800 rounded-3xl p-10 max-w-2xl w-full border border-slate-700 shadow-2xl">
+        <div class="text-center mb-10">
+            <div class="text-red-500 font-black text-4xl italic tracking-tighter mb-4 inline-block">INTER RED</div>
+            <h1 class="text-2xl font-bold text-white">Actualizar Routers MikroTik</h1>
+            <p class="text-slate-400 mt-2">Configurar los 2 routers SSTP de RemoteMikrotik</p>
+        </div>
+
+        <div class="space-y-6">
+            <div class="bg-slate-700/50 rounded-2xl p-6 border border-slate-600">
+                <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-red-500">router</span>
+                    Routers a configurar
+                </h3>
+                <div class="space-y-4 text-sm">
+                    <div class="bg-slate-900 rounded-xl p-4 border border-slate-600">
+                        <div class="font-bold text-green-400 mb-2">Router 1: RM17897139173291</div>
+                        <div class="text-slate-300 font-mono text-xs space-y-1">
+                            <div>Host: server3.remotemikrotik.com</div>
+                            <div>Usuario API: RM17897139173291</div>
+                            <div>Pass API: uEBljNhlSO</div>
+                            <div class="text-amber-400">SSTP User: RM17897139173291</div>
+                            <div class="text-amber-400">User API MikroTik: RDEzsi9e / KTU0jNfC (grupo: escribir)</div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900 rounded-xl p-4 border border-slate-600">
+                        <div class="font-bold text-green-400 mb-2">Router 2: RM17904066944449</div>
+                        <div class="text-slate-300 font-mono text-xs space-y-1">
+                            <div>Host: server3.remotemikrotik.com</div>
+                            <div>Usuario API: RM17904066944449</div>
+                            <div>Pass API: hstdmWHnWV</div>
+                            <div class="text-amber-400">SSTP User: RM17904066944449</div>
+                            <div class="text-amber-400">User API MikroTik: uGI51319 / EkJlv1Kb (grupo: escribir)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="btn-update" class="w-full bg-red-600 hover:bg-red-700 text-white font-black uppercase italic tracking-tighter py-5 rounded-2xl transition-all text-lg">
+                🚀 Actualizar Routers en la App
+            </button>
+
+            <div id="result" class="hidden bg-green-900/30 border border-green-500/30 rounded-xl p-4 text-green-300">
+                <div class="font-bold mb-2">✅ Actualización completada</div>
+                <div class="text-sm opacity-80">Los routers han sido configurados. Ahora abre el dashboard para verificarlos.</div>
+            </div>
+
+            <div id="error" class="hidden bg-red-900/30 border border-red-500/30 rounded-xl p-4 text-red-300">
+                <div class="font-bold mb-2">❌ Error</div>
+                <div id="error-msg" class="text-sm opacity-80"></div>
+            </div>
+
+            <div class="text-center pt-4 border-t border-slate-700">
+                <p class="text-slate-500 text-sm">Esta página actualiza la configuración en Firebase.</p>
+                <p class="text-slate-500 text-sm mt-1">Luego ve a <a href="/dashboard.html" class="text-red-500 hover:underline">dashboard.html</a> → pestaña MikroTik para verificar.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Config - REEMPLAZA CON TUS DATOS -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+        // ⚠️ CONFIGURA TU FIREBASE AQUÍ
+        const firebaseConfig = {
+            apiKey: "TU_API_KEY",
+            authDomain: "TU_PROJECT.firebaseapp.com",
+            projectId: "TU_PROJECT_ID",
+            storageBucket: "TU_PROJECT.appspot.com",
+            messagingSenderId: "TU_SENDER_ID",
+            appId: "TU_APP_ID"
+        };
+
+        // Si ya tienes firebase.js en el proyecto, úsalo en su lugar
+        let db;
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+        } catch (e) {
+            console.warn('Firebase no inicializado - usa la consola del dashboard en su lugar');
+        }
+
+        const newRouters = [
+            {
+                id: 'router_rm_17897139173291',
+                name: 'RemoteMikrotik RM17897139173291',
+                zone: 'SOL DE MAYO',
+                host: 'server3.remotemikrotik.com',
+                port: '8728',
+                user: 'RM17897139173291',
+                password: 'uEBljNhlSO',
+                addressList: 'morosos',
+                comment: 'Remotemikrotik.com - SSTP Client RM17897139173291',
+                sstp: {
+                    connectTo: 'server3.remotemikrotik.com',
+                    name: 'RemoteMikrotik',
+                    user: 'RM17897139173291',
+                    password: 'uEBljNhlSO',
+                    disabled: 'no'
+                },
+                apiUser: {
+                    name: 'RDEzsi9e',
+                    password: 'KTU0jNfC',
+                    group: 'escribir',
+                    comment: 'Usuario de RemoteMikrotik'
+                }
+            },
+            {
+                id: 'router_rm_17904066944449',
+                name: 'RemoteMikrotik RM17904066944449',
+                zone: 'CHOYA',
+                host: 'server3.remotemikrotik.com',
+                port: '8728',
+                user: 'RM17904066944449',
+                password: 'hstdmWHnWV',
+                addressList: 'morosos',
+                comment: 'Remotemikrotik.com - SSTP Client RM17904066944449',
+                sstp: {
+                    connectTo: 'server3.remotemikrotik.com',
+                    name: 'RemoteMikrotik',
+                    user: 'RM17904066944449',
+                    password: 'hstdmWHnWV',
+                    disabled: 'no'
+                },
+                apiUser: {
+                    name: 'uGI51319',
+                    password: 'EkJlv1Kb',
+                    group: 'escribir',
+                    comment: 'Usuario de RemoteMikrotik'
+                }
+            }
+        ];
+
+        document.getElementById('btn-update').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-update');
+            const result = document.getElementById('result');
+            const error = document.getElementById('error');
+            const errorMsg = document.getElementById('error-msg');
+            
+            btn.disabled = true;
+            btn.textContent = '⏳ Actualizando...';
+            result.classList.add('hidden');
+            error.classList.add('hidden');
+
+            try {
+                if (!db) {
+                    throw new Error('Firebase no configurado. Edita este archivo y agrega tu firebaseConfig, o usa la consola del navegador en dashboard.html');
+                }
+
+                const settingsRef = doc(db, "config", "settings");
+                const snap = await getDoc(settingsRef);
+                const settings = snap.exists() ? snap.data() : {};
+                
+                settings.routers = newRouters;
+                settings.activeRouterIndex = 0;
+                
+                await setDoc(settingsRef, settings, { merge: true });
+                
+                result.classList.remove('hidden');
+                btn.textContent = '✅ Listo - Abre el Dashboard';
+                btn.onclick = () => window.open('/dashboard.html', '_blank');
+                btn.classList.remove('bg-red-600', 'hover:bg-red-700');
+                btn.classList.add('bg-green-600', 'hover:bg-green-700');
+                
+            } catch (e) {
+                error.classList.remove('hidden');
+                errorMsg.textContent = e.message;
+                btn.disabled = false;
+                btn.textContent = '🔄 Reintentar';
+            }
+        });
+    </script>
+</body>
+</html>

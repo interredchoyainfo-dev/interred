@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html class="light" lang="es">
+<head>
+    <meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>SPANEL - Cobertura - Inter Red</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script>
+      tailwind.config = { theme: { extend: { colors: { primary: "#E30613" }, fontFamily: { body: ["Plus Jakarta Sans", "sans-serif"] } } } }
+    </script>
+</head>
+<body class="bg-[#f8fafc] font-body text-slate-800">
+    <div id="dashboard" class="min-h-screen flex">
+        <!-- Sidebar -->
+        <aside class="w-72 bg-white border-r border-slate-100 p-8 flex flex-col h-screen sticky top-0">
+            <div class="text-red-600 font-black text-3xl italic tracking-tighter mb-12">SPANEL</div>
+            <nav class="space-y-2 flex-1">
+                <a href="/admin/index.html" class="w-full flex items-center gap-4 p-4 rounded-2xl text-slate-400 hover:bg-slate-50 hover:text-slate-900 font-bold transition-all">
+                    <span class="material-symbols-outlined">dashboard</span> Inicio
+                </a>
+                <a href="/admin/contenido.html" class="w-full flex items-center gap-4 p-4 rounded-2xl text-slate-400 hover:bg-slate-50 hover:text-slate-900 font-bold transition-all">
+                    <span class="material-symbols-outlined">edit_note</span> Contenido Sitio
+                </a>
+                <a href="/admin/planes.html" class="w-full flex items-center gap-4 p-4 rounded-2xl text-slate-400 hover:bg-slate-50 hover:text-slate-900 font-bold transition-all">
+                    <span class="material-symbols-outlined">payments</span> Planes y Precios
+                </a>
+                <a href="/admin/cobertura.html" class="w-full flex items-center gap-4 p-4 rounded-2xl bg-red-50 text-red-600 font-bold transition-all">
+                    <span class="material-symbols-outlined">map</span> Cobertura
+                </a>
+                <a href="/admin/contacto.html" class="w-full flex items-center gap-4 p-4 rounded-2xl text-slate-400 hover:bg-slate-50 hover:text-slate-900 font-bold transition-all">
+                    <span class="material-symbols-outlined">contact_support</span> Contacto
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-12">
+            <header class="flex justify-between items-end mb-12">
+                <div>
+                    <h2 class="text-3xl font-black text-slate-900 uppercase italic tracking-tighter">Gestión de Cobertura</h2>
+                    <p class="text-slate-400 font-medium">Agrega, quita o modifica las localidades que se muestran en el mapa.</p>
+                </div>
+                <div class="flex gap-4">
+                    <button onclick="addTown()" class="bg-black text-white px-8 py-4 rounded-2xl font-black uppercase text-xs hover:bg-neutral-800 transition-all flex items-center gap-2">
+                        <span class="material-symbols-outlined">add_location</span> Agregar Localidad
+                    </button>
+                    <button onclick="saveAll()" id="saveBtn" class="bg-red-600 text-white px-10 py-4 rounded-2xl font-black uppercase text-sm hover:bg-red-700 transition-all flex items-center gap-3">
+                        <span class="material-symbols-outlined">save</span> Guardar Todo
+                    </button>
+                </div>
+            </header>
+
+            <div id="townsList" class="space-y-10">
+                <!-- Dinamicamente cargado -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-10 right-10 bg-black text-white px-8 py-4 rounded-2xl font-black text-xs translate-y-20 opacity-0 transition-all duration-500 z-[200]">
+        Cobertura actualizada correctamente
+    </div>
+
+    <script>
+        if (!localStorage.getItem('adminAuth')) { location.href = '/admin/index.html'; }
+
+        const API_URL = 'http://localhost:3001/api/cms/config';
+        let fullConfig = {};
+
+        async function loadData() {
+            try {
+                const res = await fetch(API_URL);
+                if (!res.ok) throw new Error('Servidor fuera de línea');
+                fullConfig = await res.json();
+                renderTowns();
+            } catch (err) {
+                alert('ERROR: El servidor API (puerto 3001) no está respondiendo. Ejecuta "npm start" en tu terminal.');
+            }
+        }
+
+        function renderTowns() {
+            const container = document.getElementById('townsList');
+            container.innerHTML = '';
+            
+            fullConfig.towns.forEach((town, index) => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-sm relative group';
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-8">
+                        <span class="bg-red-50 text-red-600 px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase">ID: ${town.id || index}</span>
+                        <button onclick="removeTown(${index})" class="text-slate-300 hover:text-red-600 transition-colors">
+                            <span class="material-symbols-outlined">delete_forever</span>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <label class="block text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Nombre</label>
+                            <input type="text" value="${town.name}" oninput="updateTownVal(${index}, 'name', this.value)" class="w-full bg-slate-50 border-0 rounded-2xl px-6 py-4 font-black text-lg focus:ring-2 focus:ring-red-600">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Estado / Subtítulo</label>
+                            <input type="text" value="${town.label}" oninput="updateTownVal(${index}, 'label', this.value)" class="w-full bg-slate-50 border-0 rounded-2xl px-6 py-4 font-bold text-slate-500 focus:ring-2 focus:ring-red-600">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Mapa Iframe (src)</label>
+                            <input type="text" value="${town.mapUrl}" oninput="updateTownVal(${index}, 'mapUrl', this.value)" class="w-full bg-slate-50 border-0 rounded-2xl px-6 py-4 font-medium text-xs text-slate-400 focus:ring-2 focus:ring-red-600">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Enlace Directo (Google Maps)</label>
+                            <input type="text" value="${town.fullUrl}" oninput="updateTownVal(${index}, 'fullUrl', this.value)" class="w-full bg-slate-50 border-0 rounded-2xl px-6 py-4 font-medium text-xs text-slate-400 focus:ring-2 focus:ring-red-600">
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function updateTownVal(index, field, val) {
+            fullConfig.towns[index][field] = val;
+        }
+
+        function addTown() {
+            fullConfig.towns.unshift({
+                id: 'new-' + Date.now(),
+                name: 'Nueva Localidad',
+                label: 'Zona habilitada',
+                mapUrl: 'https://maps.google.com/maps?q=Choya,Santiago%20del%20Estero&t=&z=14&ie=UTF8&iwloc=&output=embed',
+                fullUrl: 'https://maps.google.com'
+            });
+            renderTowns();
+        }
+
+        function removeTown(index) {
+            if (confirm('¿Eliminar esta localidad?')) {
+                fullConfig.towns.splice(index, 1);
+                renderTowns();
+            }
+        }
+
+        async function saveAll() {
+            const btn = document.getElementById('saveBtn');
+            btn.disabled = true; btn.innerText = 'GUARDANDO...';
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(fullConfig)
+                });
+                if (res.ok) { showToast(); }
+            } catch (err) { alert('Error al guardar'); } 
+            finally { btn.disabled = false; btn.innerText = 'GUARDAR TODO'; }
+        }
+
+        function showToast() {
+            const t = document.getElementById('toast');
+            t.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => { t.classList.add('translate-y-20', 'opacity-0'); }, 3000);
+        }
+
+        loadData();
+    </script>
+</body>
+</html>

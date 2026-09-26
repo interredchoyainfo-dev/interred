@@ -188,7 +188,7 @@ const App = {
         this._bind('btn-sync-morosos', () => this.syncMikrotik());
         this._bind('btn-sync-mikrotik-main', () => this.syncMikrotik());
 
-        // 🟢 HEARTBEAT SERVIDOR (Check every 10s)
+        // HEARTBEAT SERVIDOR (Check every 10s)
         setInterval(async () => {
             try {
                 await fetch(`${API_URL}/api/health`);
@@ -324,6 +324,7 @@ const App = {
             clients: '/clientes',
             payments: '/cobros',
             morosos: '/morosos',
+            mikrotik: '/mikrotik',
             settings: '/ajustes',
             notifications: '/notificaciones'
         };
@@ -345,6 +346,7 @@ const App = {
             'clientes': 'clients',
             'cobros': 'payments',
             'morosos': 'morosos',
+            'mikrotik': 'mikrotik',
             'ajustes': 'settings',
             'notificaciones': 'notifications'
         };
@@ -1957,79 +1959,220 @@ const App = {
     // MikroTik
     // ========================================
     bindMikrotik() {
-        const settings = DB.getSettings();
-        
-        // Router Selector logic
-        const updateRouterSelector = () => {
-          const selector = document.getElementById('mk-router-selector');
-          if (selector) {
-            selector.innerHTML = settings.routers.map((r, i) => 
-               `<option value="${i}" ${i === settings.activeRouterIndex ? 'selected' : ''}>${r.name || 'Sin nombre'}</option>`
-            ).join('');
-          }
+        this.routerStatusMap = this.routerStatusMap || {};
+
+        // 1. Botón Probar Todos los Routers
+        this._bind('btn-test-all-routers', async () => {
+            const btn = document.getElementById('btn-test-all-routers');
+            if (btn) btn.textContent = '⏳ Probando...';
+            this.showToast('🔌 Probando conexión en todos los routers MikroTik...', 'info');
+
+            const currentSettings = DB.getSettings();
+            (currentSettings.routers || []).forEach(r => {
+                this.routerStatusMap[r.id] = { loading: true };
+            });
+            this.renderAllRoutersList();
+
+            try {
+                const { testAllRouters } = await import('./mikrotikService.js');
+                const results = await testAllRouters(currentSettings.routers);
+                results.forEach(res => {
+                    this.routerStatusMap[res.id] = res;
+                });
+                const okCount = results.filter(r => r.success).length;
+                this.showToast(`✅ Prueba finalizada: ${okCount} de ${results.length} routers conectados`, okCount === results.length ? 'success' : 'warning');
+            } catch (err) {
+                this.showToast(`❌ Error al probar routers: ${err.message}`, 'error');
+            } finally {
+                if (btn) btn.textContent = '⚡ Probar Todos';
+                this.renderAllRoutersList();
+            }
+        });
+
+        // 2. Botón + Nuevo Router (superior y cancelar)
+        const resetForm = () => {
+            const idEl = document.getElementById('setting-mikrotik-id');
+            const nameEl = document.getElementById('setting-mikrotik-name');
+            const zoneEl = document.getElementById('setting-mikrotik-zone');
+            const hostEl = document.getElementById('setting-mikrotik-host');
+            const portEl = document.getElementById('setting-mikrotik-port');
+            const winboxEl = document.getElementById('setting-mikrotik-winbox');
+            const webEl = document.getElementById('setting-mikrotik-web');
+            const userEl = document.getElementById('setting-mikrotik-user');
+            const passEl = document.getElementById('setting-mikrotik-password');
+            const sstpUserEl = document.getElementById('setting-mikrotik-sstp-user');
+            const sstpPassEl = document.getElementById('setting-mikrotik-sstp-password');
+            const listEl = document.getElementById('setting-mikrotik-list');
+            const activeEl = document.getElementById('setting-mikrotik-active');
+            const scriptEl = document.getElementById('setting-mikrotik-script');
+            const titleEl = document.getElementById('form-mikrotik-title');
+
+            if (idEl) idEl.value = '';
+            if (nameEl) nameEl.value = '';
+            if (zoneEl) zoneEl.value = 'CHOYA';
+            if (hostEl) hostEl.value = 'server3.remotemikrotik.com';
+            if (portEl) portEl.value = '7123';
+            if (winboxEl) winboxEl.value = '';
+            if (webEl) webEl.value = '';
+            if (userEl) userEl.value = '';
+            if (passEl) passEl.value = '';
+            if (sstpUserEl) sstpUserEl.value = '';
+            if (sstpPassEl) sstpPassEl.value = '';
+            if (listEl) listEl.value = 'morosos';
+            if (activeEl) activeEl.checked = true;
+            if (scriptEl) scriptEl.value = '';
+            if (titleEl) titleEl.textContent = '➕ Nuevo Router MikroTik';
+
+            document.getElementById('sec-router-form')?.scrollIntoView({ behavior: 'smooth' });
         };
-        updateRouterSelector();
 
-        this._bind('mk-router-selector', (e) => {
-          settings.activeRouterIndex = parseInt(e.target.value);
-          DB.saveSettings(settings);
-          this.loadMikrotikDashboard(); // Reload with new router data
+        this._bind('btn-add-router-top', resetForm);
+        this._bind('btn-cancel-edit-router', resetForm);
+
+        // 3. Autocompletar desde script VPN
+        this._bind('btn-parse-script', async () => {
+            const scriptText = document.getElementById('setting-mikrotik-script')?.value || '';
+            if (!scriptText.trim()) {
+                this.showToast('⚠️ Pega el script en el cuadro de texto primero', 'warning');
+                return;
+            }
+            const { parseMikrotikScript } = await import('./mikrotikService.js');
+            const parsed = parseMikrotikScript(scriptText);
+            if (parsed) {
+                if (parsed.host) document.getElementById('setting-mikrotik-host').value = parsed.host;
+                if (parsed.port) document.getElementById('setting-mikrotik-port').value = parsed.port;
+                if (parsed.winboxPort && document.getElementById('setting-mikrotik-winbox')) document.getElementById('setting-mikrotik-winbox').value = parsed.winboxPort;
+                if (parsed.webPort && document.getElementById('setting-mikrotik-web')) document.getElementById('setting-mikrotik-web').value = parsed.webPort;
+                if (parsed.user) document.getElementById('setting-mikrotik-user').value = parsed.user;
+                if (parsed.password) document.getElementById('setting-mikrotik-password').value = parsed.password;
+                if (parsed.sstpUser && document.getElementById('setting-mikrotik-sstp-user')) document.getElementById('setting-mikrotik-sstp-user').value = parsed.sstpUser;
+                if (parsed.sstpPassword && document.getElementById('setting-mikrotik-sstp-password')) document.getElementById('setting-mikrotik-sstp-password').value = parsed.sstpPassword;
+                if (parsed.zone && document.getElementById('setting-mikrotik-zone')) document.getElementById('setting-mikrotik-zone').value = parsed.zone;
+                if (!document.getElementById('setting-mikrotik-name').value && parsed.zone) {
+                    document.getElementById('setting-mikrotik-name').value = parsed.zone.charAt(0).toUpperCase() + parsed.zone.slice(1).toLowerCase();
+                }
+                this.showToast('⚡ Datos autocompletados desde el script con éxito', 'success');
+            } else {
+                this.showToast('⚠️ No se pudieron reconocer los datos del script', 'warning');
+            }
         });
 
-        this._bind('btn-add-router', () => {
-          settings.routers.push({
-            name: 'Nuevo Router',
-            host: '',
-            port: '8728',
-            user: '',
-            password: '',
-            addressList: 'morosos'
-          });
-          settings.activeRouterIndex = settings.routers.length - 1;
-          DB.saveSettings(settings);
-          this.loadMikrotikDashboard();
-          this.showToast('✅ Nuevo router añadido. Configure los datos abajo.', 'success');
+        // 4. Guardar Router (Crear o Actualizar)
+        this._bind('btn-save-mikrotik', async () => {
+            const currentSettings = DB.getSettings();
+            currentSettings.routers = currentSettings.routers || [];
+
+            const id = document.getElementById('setting-mikrotik-id')?.value;
+            const name = document.getElementById('setting-mikrotik-name')?.value.trim();
+            const zone = document.getElementById('setting-mikrotik-zone')?.value || 'CHOYA';
+            const host = document.getElementById('setting-mikrotik-host')?.value.trim();
+            const port = document.getElementById('setting-mikrotik-port')?.value.trim();
+            const winboxPort = document.getElementById('setting-mikrotik-winbox')?.value.trim();
+            const webPort = document.getElementById('setting-mikrotik-web')?.value.trim();
+            const user = document.getElementById('setting-mikrotik-user')?.value.trim();
+            const password = document.getElementById('setting-mikrotik-password')?.value;
+            const sstpUser = document.getElementById('setting-mikrotik-sstp-user')?.value.trim();
+            const sstpPassword = document.getElementById('setting-mikrotik-sstp-password')?.value.trim();
+            const addressList = document.getElementById('setting-mikrotik-list')?.value.trim() || 'morosos';
+            const active = document.getElementById('setting-mikrotik-active') ? document.getElementById('setting-mikrotik-active').checked : true;
+            const script = document.getElementById('setting-mikrotik-script')?.value || '';
+
+            if (!name || !host || !port || !user || !password) {
+                this.showToast('⚠️ Completa Nombre, Host, Puerto API, Usuario y Contraseña.', 'warning');
+                return;
+            }
+
+            const routerData = {
+                id: id || `router_${Date.now()}`,
+                name,
+                zone,
+                host,
+                port,
+                winboxPort,
+                webPort,
+                user,
+                password,
+                sstpHost: host,
+                sstpUser,
+                sstpPassword,
+                addressList,
+                active,
+                script
+            };
+
+            const existingIdx = id ? currentSettings.routers.findIndex(r => r.id === id) : -1;
+            if (existingIdx >= 0) {
+                currentSettings.routers[existingIdx] = routerData;
+            } else {
+                currentSettings.routers.push(routerData);
+                currentSettings.activeRouterIndex = currentSettings.routers.length - 1;
+            }
+
+            await DB.saveSettings(currentSettings);
+            this.showToast(`💾 Router "${name}" guardado exitosamente.`, 'success');
+            await this.loadMikrotikDashboard();
         });
 
-        this._bind('btn-delete-router', () => {
-          if (settings.routers.length <= 1) {
-            this.showToast('⚠️ No puedes eliminar el único router.', 'warning');
-            return;
-          }
-          if (confirm('¿Eliminar este router de la configuración?')) {
-            settings.routers.splice(settings.activeRouterIndex, 1);
-            settings.activeRouterIndex = 0;
-            DB.saveSettings(settings);
-            this.loadMikrotikDashboard();
-            this.showToast('🗑️ Router eliminado.', 'info');
-          }
+        // 5. Probar Router en el Formulario
+        this._bind('btn-test-mikrotik', async () => {
+            const host = document.getElementById('setting-mikrotik-host')?.value.trim();
+            const port = parseInt(document.getElementById('setting-mikrotik-port')?.value || '8728');
+            const user = document.getElementById('setting-mikrotik-user')?.value.trim();
+            const password = document.getElementById('setting-mikrotik-password')?.value;
+
+            if (!host || !user || !password) {
+                this.showToast('⚠️ Completa Host, Puerto, Usuario y Contraseña para probar', 'warning');
+                return;
+            }
+
+            this.showToast('🔌 Probando conexión...', 'info');
+            const btn = document.getElementById('btn-test-mikrotik');
+            if (btn) btn.textContent = '⏳ Probando...';
+
+            try {
+                const { testMikrotikConnection } = await import('./mikrotikService.js');
+                const res = await testMikrotikConnection({ host, port, user, password });
+                if (res && res.success) {
+                    this.showToast(`✅ Conexión Exitosa: ${res.identity || 'MikroTik'} (${res.version || 'v7'}) - Uptime: ${res.uptime || '--'}`, 'success');
+                } else {
+                    this.showToast(`❌ Error de Conexión: ${res?.message}`, 'error');
+                }
+            } catch (e) {
+                this.showToast(`❌ Error: ${e.message}`, 'error');
+            } finally {
+                if (btn) btn.textContent = '🔌 Probar Conexión';
+            }
         });
 
-        // Save current router settings
-        this._bind('btn-save-mikrotik', () => {
-          const idx = settings.activeRouterIndex;
-          settings.routers[idx] = {
-            name: document.getElementById('setting-mikrotik-name').value,
-            host: document.getElementById('setting-mikrotik-host').value,
-            port: document.getElementById('setting-mikrotik-port').value,
-            user: document.getElementById('setting-mikrotik-user').value,
-            password: document.getElementById('setting-mikrotik-password').value,
-            addressList: document.getElementById('setting-mikrotik-list').value
-          };
-          DB.saveSettings(settings);
-          this.showToast('✅ Router guardado correctamente.', 'success');
-          updateRouterSelector();
+        // 6. Reiniciar Router
+        this._bind('btn-reboot-mikrotik', async () => {
+            if (!confirm('¿Estás seguro de que quieres reiniciar este Router MikroTik? Se interrumpirá la conexión unos minutos.')) {
+                return;
+            }
+            const settings = DB.getSettings();
+            const router = settings.routers[settings.activeRouterIndex] || settings.routers[0];
+            if (!router) return;
+
+            this.showToast(`Enviando comando de reinicio a ${router.name}...`, 'info');
+            try {
+                const { rebootMikrotik } = await import('./mikrotikService.js');
+                const res = await rebootMikrotik({
+                    host: router.host,
+                    port: parseInt(router.port || '8728'),
+                    user: router.user,
+                    password: router.password
+                });
+                if (res && res.success) {
+                    this.showToast(`✅ Router ${router.name} reiniciando...`, 'warning');
+                } else {
+                    this.showToast(`❌ Error al reiniciar: ${res?.message}`, 'error');
+                }
+            } catch (e) {
+                this.showToast('Error de conexión con el backend', 'error');
+            }
         });
 
-        // Refresh & Test buttons
-        this._bind('btn-refresh-mikrotik', () => this.loadMikrotikDashboard());
-
-        this._bind('btn-test-mikrotik', () => {
-            // Save before testing
-            document.getElementById('btn-save-mikrotik').click();
-            this.loadMikrotikDashboard();
-        });
-
+        // Toggle mostrar contraseña en el form
         const btnTogglePass = document.getElementById('toggle-mikrotik-password-form');
         if (btnTogglePass) {
             btnTogglePass.addEventListener('click', () => {
@@ -2042,37 +2185,109 @@ const App = {
             });
         }
 
-        this._bind('btn-reboot-mikrotik', async () => {
-            if (!confirm('¿Estás seguro de que quieres reiniciar el Router MikroTik? Se cortará la conexión momentáneamente.')) {
-                return;
-            }
-            
-            const router = DB.getSettings().routers[DB.getSettings().activeRouterIndex];
-            const config = {
-                host: router.host,
-                port: parseInt(router.port || '8728'),
-                user: router.user,
-                password: router.password
-            };
+        // Refrescar
+        this._bind('btn-refresh-mikrotik', () => this.loadMikrotikDashboard());
 
-            this.showToast('Enviando comando de reinicio...', 'info');
-            try {
-                const { rebootMikrotik } = await import('./mikrotikService.js');
-                const res = await rebootMikrotik(config);
-                if (res && res.success) {
-                    this.showToast('✅ Router reiniciando. Espera unos minutos antes de refrescar.', 'warning');
-                    const statusEl = document.getElementById('mk-status-text');
-                    if (statusEl) {
-                        statusEl.textContent = 'Reiniciando...';
-                        statusEl.style.color = '#ff9800';
+        // Event delegation para las tarjetas de routers
+        const cardsContainer = document.getElementById('mk-routers-cards-container');
+        if (cardsContainer) {
+            cardsContainer.addEventListener('click', async (e) => {
+                const btn = e.target.closest('button');
+                const checkbox = e.target.closest('.mk-card-active-toggle');
+
+                if (checkbox) {
+                    const idx = parseInt(checkbox.dataset.idx);
+                    const currentSettings = DB.getSettings();
+                    if (currentSettings.routers && currentSettings.routers[idx]) {
+                        currentSettings.routers[idx].active = checkbox.checked;
+                        await DB.saveSettings(currentSettings);
+                        this.showToast(checkbox.checked 
+                            ? `🟢 Router "${currentSettings.routers[idx].name}" ACTIVO para cortes` 
+                            : `⚪ Router "${currentSettings.routers[idx].name}" PAUSADO para cortes`, 
+                            'info'
+                        );
+                        this.renderAllRoutersList();
                     }
-                } else {
-                    this.showToast(`❌ Error al reiniciar: ${res?.message}`, 'error');
+                    return;
                 }
-            } catch (e) {
-                this.showToast('Error de conexión con el backend local', 'error');
-            }
-        });
+
+                if (!btn) return;
+                const action = btn.dataset.action;
+                const idx = parseInt(btn.dataset.idx);
+                const currentSettings = DB.getSettings();
+                const router = currentSettings.routers ? currentSettings.routers[idx] : null;
+                if (!router) return;
+
+                if (action === 'test') {
+                    btn.textContent = '⏳ Probando...';
+                    this.routerStatusMap[router.id] = { loading: true };
+                    this.renderAllRoutersList();
+
+                    try {
+                        const { testMikrotikConnection } = await import('./mikrotikService.js');
+                        const res = await testMikrotikConnection({
+                            host: router.host,
+                            port: parseInt(router.port || '8728'),
+                            user: router.user,
+                            password: router.password
+                        });
+                        this.routerStatusMap[router.id] = { id: router.id, name: router.name, ...res };
+                        if (res && res.success) {
+                            this.showToast(`✅ ${router.name}: Conectado OK (${res.version})`, 'success');
+                        } else {
+                            this.showToast(`❌ ${router.name}: ${res?.message}`, 'error');
+                        }
+                    } catch (err) {
+                        this.routerStatusMap[router.id] = { id: router.id, name: router.name, success: false, message: err.message };
+                        this.showToast(`❌ Error: ${err.message}`, 'error');
+                    }
+                    this.renderAllRoutersList();
+                } else if (action === 'monitor') {
+                    currentSettings.activeRouterIndex = idx;
+                    await DB.saveSettings(currentSettings);
+                    this.showToast(`📊 Monitoreando tráfico de: ${router.name}`, 'info');
+                    await this.loadMikrotikDashboard();
+                } else if (action === 'sync') {
+                    btn.textContent = '⏳ Sincronizando...';
+                    try {
+                        const { syncMikrotik } = await import('./mikrotikService.js');
+                        const res = await syncMikrotik({
+                            host: router.host,
+                            port: parseInt(router.port || '8728'),
+                            user: router.user,
+                            password: router.password,
+                            addressList: router.addressList || 'morosos'
+                        }, DB.getClients(), DB.getMorosos(), false);
+                        if (res && res.success) {
+                            this.showToast(`✅ Sincronizados clientes y morosos en ${router.name}`, 'success');
+                        } else {
+                            this.showToast(`❌ Error: ${res?.message}`, 'error');
+                        }
+                    } catch (err) {
+                        this.showToast(`❌ Error: ${err.message}`, 'error');
+                    }
+                    btn.textContent = '🔄 Sync';
+                } else if (action === 'edit') {
+                    this.populateRouterEditForm(router);
+                    document.getElementById('sec-router-form')?.scrollIntoView({ behavior: 'smooth' });
+                    this.showToast(`✏️ Editando datos de ${router.name}`, 'info');
+                } else if (action === 'delete') {
+                    if (currentSettings.routers.length <= 1) {
+                        this.showToast('⚠️ No puedes eliminar el único router.', 'warning');
+                        return;
+                    }
+                    if (confirm(`¿Eliminar el router "${router.name}" de la configuración?`)) {
+                        currentSettings.routers.splice(idx, 1);
+                        if (currentSettings.activeRouterIndex >= currentSettings.routers.length) {
+                            currentSettings.activeRouterIndex = 0;
+                        }
+                        await DB.saveSettings(currentSettings);
+                        this.showToast(`🗑️ Router "${router.name}" eliminado.`, 'info');
+                        await this.loadMikrotikDashboard();
+                    }
+                }
+            });
+        }
 
         // ======== AUTO-REFRESH TRAFFIC ========
         this.mkAutoRefreshTimer = null;
@@ -2352,44 +2567,242 @@ const App = {
         this.showToast(`✅ Script generado: ${type}`, 'success');
     },
 
-    async loadMikrotikDashboard() {
+    renderAllRoutersList() {
         const settings = DB.getSettings();
-        const router = settings.routers[settings.activeRouterIndex] || settings.routers[0];
-        
-        // Form fields
+        const routers = settings.routers || [];
+        const activeIdx = settings.activeRouterIndex || 0;
+
+        const totalBadge = document.getElementById('mk-total-routers-badge');
+        const activeBadge = document.getElementById('mk-active-routers-badge');
+        const networkBadge = document.getElementById('mk-network-status-badge');
+        const container = document.getElementById('mk-routers-cards-container');
+
+        const activeRouters = routers.filter(r => r.active !== false);
+        if (totalBadge) totalBadge.textContent = routers.length;
+        if (activeBadge) activeBadge.textContent = `${activeRouters.length} / ${routers.length}`;
+
+        if (networkBadge) {
+            const statuses = Object.values(this.routerStatusMap || {});
+            const hasOffline = statuses.some(s => s && s.success === false);
+            const hasOnline = statuses.some(s => s && s.success === true);
+            if (hasOnline && !hasOffline) {
+                networkBadge.innerHTML = '🟢 100% Online';
+                networkBadge.style.color = 'var(--accent-green)';
+            } else if (hasOnline && hasOffline) {
+                networkBadge.innerHTML = '🟡 Parcial';
+                networkBadge.style.color = 'var(--accent-amber)';
+            } else if (hasOffline) {
+                networkBadge.innerHTML = '🔴 Desconectado';
+                networkBadge.style.color = 'var(--accent-red)';
+            } else {
+                networkBadge.innerHTML = '🟢 Operativo';
+                networkBadge.style.color = 'var(--accent-green)';
+            }
+        }
+
+        if (!container) return;
+
+        if (routers.length === 0) {
+            container.innerHTML = `<div style="text-align: center; padding: 24px; color: var(--text-secondary);">No hay routers configurados. Agrega uno con el formulario inferior.</div>`;
+            return;
+        }
+
+        container.innerHTML = routers.map((r, i) => {
+            const isSelected = i === activeIdx;
+            const isActive = r.active !== false;
+            const statusInfo = (this.routerStatusMap && this.routerStatusMap[r.id]) || null;
+
+            let statusLed = '#666';
+            let statusText = 'Listo / No probado';
+            let statusBg = 'rgba(255,255,255,0.05)';
+            let statusColor = 'var(--text-secondary)';
+
+            if (statusInfo?.loading) {
+                statusLed = '#f59e0b';
+                statusText = 'Verificando...';
+                statusBg = 'rgba(245, 158, 11, 0.1)';
+                statusColor = '#f59e0b';
+            } else if (statusInfo?.success) {
+                statusLed = '#10b981';
+                statusText = `Conectado ✅ (${statusInfo.version || 'RouterOS'})`;
+                statusBg = 'rgba(16, 185, 129, 0.12)';
+                statusColor = '#10b981';
+            } else if (statusInfo?.success === false) {
+                statusLed = '#ef4444';
+                statusText = `Error ❌ (${statusInfo.message || 'Sin conexión'})`;
+                statusBg = 'rgba(239, 68, 68, 0.12)';
+                statusColor = '#ef4444';
+            }
+
+            const winbox = r.winboxPort || (r.name.toLowerCase().includes('choya') ? '1123' : '1062');
+            const web = r.webPort || (r.name.toLowerCase().includes('choya') ? '4123' : '4062');
+            const sstp = r.sstpUser || 'Remotemikrotik';
+
+            return `
+                <div class="glass" style="padding: 16px; border-radius: 14px; border: 1px solid ${isSelected ? 'var(--accent-red)' : 'var(--border-color)'}; background: ${isSelected ? 'rgba(227, 6, 19, 0.05)' : 'var(--bg-surface)'}; transition: all 0.2s;">
+                    <!-- Cabecera de la tarjeta -->
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 38px; height: 38px; border-radius: 10px; background: var(--bg-surface-elevated); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center;">
+                                <span style="width: 10px; height: 10px; border-radius: 50%; background: ${statusLed};"></span>
+                            </div>
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <h4 style="margin: 0; font-size: 15px; font-weight: 800; color: var(--text-primary);">${r.name || 'MikroTik'}</h4>
+                                    <span style="font-size: 10px; font-weight: 800; background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); padding: 2px 8px; border-radius: 6px;">${r.zone || 'TODOS'}</span>
+                                    ${isSelected ? '<span style="font-size: 9px; font-weight: 800; background: var(--accent-red); color: white; padding: 2px 6px; border-radius: 4px;">MONITOREANDO</span>' : ''}
+                                </div>
+                                <div style="display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; padding: 2px 8px; border-radius: 6px; background: ${statusBg}; color: ${statusColor}; font-size: 11px; font-weight: 700;">
+                                    ${statusText}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Switch Activo para Cortes -->
+                        <div style="display: flex; align-items: center; gap: 8px; background: var(--bg-surface-elevated); padding: 6px 12px; border-radius: 10px; border: 1px solid var(--border-color);">
+                            <span style="font-size: 11px; font-weight: 800; color: ${isActive ? 'var(--accent-green)' : 'var(--text-secondary)'};">
+                                ${isActive ? '⚡ ACTIVO PARA CORTES' : '⏸️ PAUSADO'}
+                            </span>
+                            <label class="toggle" style="transform: scale(0.8); transform-origin: right;">
+                                <input type="checkbox" class="mk-card-active-toggle" data-idx="${i}" ${isActive ? 'checked' : ''}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Datos de Conexión en Grid -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 14px; background: rgba(0,0,0,0.2); padding: 10px 12px; border-radius: 10px; font-size: 11px;">
+                        <div>
+                            <span style="opacity: 0.5; display: block; font-size: 9px;">HOST VPN</span>
+                            <strong style="color: var(--text-primary); font-family: monospace;">${r.host}</strong>
+                        </div>
+                        <div>
+                            <span style="opacity: 0.5; display: block; font-size: 9px;">PUERTO API</span>
+                            <strong style="color: var(--accent-red); font-family: monospace;">${r.port}</strong>
+                        </div>
+                        <div>
+                            <span style="opacity: 0.5; display: block; font-size: 9px;">WINBOX / WEB</span>
+                            <span style="font-family: monospace; color: var(--text-secondary);">${winbox} / ${web}</span>
+                        </div>
+                        <div>
+                            <span style="opacity: 0.5; display: block; font-size: 9px;">USUARIO API</span>
+                            <span style="font-family: monospace; color: var(--text-secondary);">${r.user}</span>
+                        </div>
+                        <div>
+                            <span style="opacity: 0.5; display: block; font-size: 9px;">CLIENTE SSTP</span>
+                            <span style="font-family: monospace; color: var(--text-secondary);">${sstp}</span>
+                        </div>
+                        ${statusInfo?.uptime ? `
+                        <div>
+                            <span style="opacity: 0.5; display: block; font-size: 9px;">UPTIME</span>
+                            <span style="font-weight: 700; color: var(--accent-green);">${statusInfo.uptime}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+
+                    <!-- Botones de Acción de esta Tarjeta -->
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                        <button type="button" class="btn-action-sm glass" data-action="test" data-idx="${i}" style="font-size: 11px; height: 32px; font-weight: 700;">
+                            🔌 Probar
+                        </button>
+                        <button type="button" class="btn-action-sm glass" data-action="monitor" data-idx="${i}" style="font-size: 11px; height: 32px; font-weight: 700; color: ${isSelected ? 'var(--accent-red)' : 'var(--text-primary)'};">
+                            📊 ${isSelected ? 'Monitoreando' : 'Ver Tráfico'}
+                        </button>
+                        <button type="button" class="btn-action-sm glass" data-action="sync" data-idx="${i}" style="font-size: 11px; height: 32px; color: var(--accent-blue);">
+                            🔄 Sync
+                        </button>
+                        <button type="button" class="btn-action-sm glass" data-action="edit" data-idx="${i}" style="font-size: 11px; height: 32px;">
+                            ✏️ Editar
+                        </button>
+                        <button type="button" class="btn-action-sm glass" data-action="delete" data-idx="${i}" style="font-size: 11px; height: 32px; color: var(--accent-red);">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    populateRouterEditForm(router) {
+        if (!router) return;
+        const idEl = document.getElementById('setting-mikrotik-id');
         const nameEl = document.getElementById('setting-mikrotik-name');
+        const zoneEl = document.getElementById('setting-mikrotik-zone');
         const hostEl = document.getElementById('setting-mikrotik-host');
         const portEl = document.getElementById('setting-mikrotik-port');
+        const winboxEl = document.getElementById('setting-mikrotik-winbox');
+        const webEl = document.getElementById('setting-mikrotik-web');
         const userEl = document.getElementById('setting-mikrotik-user');
         const passEl = document.getElementById('setting-mikrotik-password');
+        const sstpUserEl = document.getElementById('setting-mikrotik-sstp-user');
+        const sstpPassEl = document.getElementById('setting-mikrotik-sstp-password');
         const listEl = document.getElementById('setting-mikrotik-list');
+        const activeEl = document.getElementById('setting-mikrotik-active');
+        const scriptEl = document.getElementById('setting-mikrotik-script');
+        const titleEl = document.getElementById('form-mikrotik-title');
 
+        if (idEl) idEl.value = router.id || '';
         if (nameEl) nameEl.value = router.name || '';
+        if (zoneEl) zoneEl.value = router.zone || 'CHOYA';
         if (hostEl) hostEl.value = router.host || '';
-        if (portEl) portEl.value = router.port || '8729';
+        if (portEl) portEl.value = router.port || '8728';
+        if (winboxEl) winboxEl.value = router.winboxPort || '';
+        if (webEl) webEl.value = router.webPort || '';
         if (userEl) userEl.value = router.user || '';
         if (passEl) passEl.value = router.password || '';
+        if (sstpUserEl) sstpUserEl.value = router.sstpUser || '';
+        if (sstpPassEl) sstpPassEl.value = router.sstpPassword || '';
         if (listEl) listEl.value = router.addressList || 'morosos';
+        if (activeEl) activeEl.checked = router.active !== false;
+        if (scriptEl) scriptEl.value = router.script || '';
+        if (titleEl) titleEl.textContent = `✏️ Editando Router: ${router.name}`;
+    },
+
+    async loadMikrotikDashboard() {
+        const settings = DB.getSettings();
+        const routers = settings.routers || [];
+        const idx = settings.activeRouterIndex || 0;
+        const router = routers[idx] || routers[0];
+
+        // Renderizar la lista de todos los routers
+        this.renderAllRoutersList();
+
+        // Cargar datos en el formulario
+        if (router) {
+            this.populateRouterEditForm(router);
+        }
+
+        // Título del router monitoreado en vivo
+        const monTitleEl = document.getElementById('mk-current-monitored-name');
+        if (monTitleEl && router) {
+            monTitleEl.textContent = `${router.name} (${router.zone || 'General'})`;
+        }
+
+        if (!router || !router.host || !router.user || !router.password) {
+            return;
+        }
 
         const config = {
             host: router.host,
-            port: parseInt(router.port || '8729'),
+            port: parseInt(router.port || '8728'),
             user: router.user,
             password: router.password
         };
 
-        const statusEl = document.getElementById('mk-status-text');
-        if (!statusEl) return;
-        
-        if (!config.host || !config.user || !config.password) {
-            statusEl.textContent = 'Sin Configurar';
-            statusEl.style.color = '#ff9800';
-            return;
-        }
-
-        if (!this.mkAutoRefreshTimer) {
-            statusEl.textContent = 'Conectando...';
-            statusEl.style.color = '#ff9800';
+        // Si aún no hemos testeado todos los routers, lanzar prueba silenciosa en segundo plano
+        if (!this._initialRoutersTested) {
+            this._initialRoutersTested = true;
+            import('./mikrotikService.js').then(async ({ testAllRouters }) => {
+                try {
+                    const results = await testAllRouters(settings.routers);
+                    results.forEach(res => {
+                        this.routerStatusMap[res.id] = res;
+                    });
+                    this.renderAllRoutersList();
+                } catch (e) {
+                    console.warn('Initial routers test error:', e.message);
+                }
+            });
         }
 
         try {
