@@ -102,16 +102,25 @@ async function findQueue(queueMenu, ip) {
     return null;
 }
 
+function formatLimit(speed) {
+    if (!speed) return '10k/10k';
+    const s = String(speed).trim().toLowerCase();
+    if (s.includes('/')) return s;
+    if (/^\d+$/.test(s)) return `${s}k/${s}k`;
+    return `${s}/${s}`;
+}
+
 // BUG #5 corregido: parámetro renombrado a shouldBeReduced (true = reducir, false = activar)
 // BUG #11 corregido: eliminado .enable() redundante después de .set()
-async function handleQueue(api, ip, clientName, shouldBeReduced) {
+async function handleQueue(api, ip, clientName, shouldBeReduced, reductionSpeed = '10k/10k') {
     const cleanIP = ip.split('/')[0].trim();
     const now = new Date().toLocaleString('es-AR', {
         timeZone: 'America/Argentina/Buenos_Aires',
         hour12: false
     });
+    const finalLimit = formatLimit(reductionSpeed);
 
-    console.log(`[handleQueue] ${clientName} (${cleanIP}) | Modo: ${shouldBeReduced ? 'REDUCIR' : 'ACTIVAR'}`);
+    console.log(`[handleQueue] ${clientName} (${cleanIP}) | Modo: ${shouldBeReduced ? `REDUCIR (${finalLimit})` : 'ACTIVAR'}`);
 
     try {
         const queueMenu = api.menu('/queue/simple');
@@ -138,9 +147,9 @@ async function handleQueue(api, ip, clientName, shouldBeReduced) {
         const queueData = {
             name: finalName,
             target: `${cleanIP}/32`,
-            'max-limit': shouldBeReduced ? '10k/10k' : '0/0', // 10k es más estable que 1k
+            'max-limit': shouldBeReduced ? finalLimit : '0/0',
             disabled: shouldBeReduced ? 'no' : 'yes',
-            comment: shouldBeReduced ? `REDUCIDO: ${now}` : ''
+            comment: shouldBeReduced ? `REDUCIDO (${finalLimit}): ${now}` : ''
         };
 
         if (realId) {
@@ -153,7 +162,7 @@ async function handleQueue(api, ip, clientName, shouldBeReduced) {
 
         return { 
             success: true, 
-            message: shouldBeReduced ? 'Servicio reducido correctamente' : 'Servicio activado correctamente' 
+            message: shouldBeReduced ? `Servicio reducido a ${finalLimit} correctamente` : 'Servicio activado correctamente' 
         };
 
     } catch (err) {
@@ -201,11 +210,12 @@ async function handleAddressList(api, ip, listName = 'morosos', isSuspended = tr
     }
 }
 
-// 🔴 REDUCIR / CORTAR (Cola a 1k/1k + Address List Morosos)
+// 🔴 REDUCIR / CORTAR (Cola a velocidad configurada + Address List Morosos)
 export async function reduceClient(config, ip, clientName = 'Cliente') {
     if (!isValidIP(ip.split('/')[0])) return { success: false, message: 'IP inválida' };
+    const speedLimit = config?.reductionLimit || config?.reductionSpeed || config?.maxLimit || '10k/10k';
     return withMikrotik(config, async (api) => {
-        const resQueue = await handleQueue(api, ip, clientName, true);
+        const resQueue = await handleQueue(api, ip, clientName, true, speedLimit);
         await handleAddressList(api, ip, config?.addressList || 'morosos', true);
         return resQueue;
     });
@@ -319,7 +329,8 @@ export async function syncClientsWithMikrotik(config, clients, morosos, clean = 
         }
 
         let actions = [];
-        console.log(`[SYNC] Sincronizando ${clients.length} clientes... (clean: ${clean})`);
+        const syncLimit = formatLimit(config?.reductionLimit || config?.reductionSpeed || config?.maxLimit || '10k/10k');
+        console.log(`[SYNC] Sincronizando ${clients.length} clientes... (clean: ${clean}, límite reducción: ${syncLimit})`);
 
         for (const client of clients) {
             try {
@@ -345,23 +356,23 @@ export async function syncClientsWithMikrotik(config, clients, morosos, clean = 
                     const queueData = {
                         name: finalName,
                         target,
-                        'max-limit': '1k/1k',
+                        'max-limit': syncLimit,
                         disabled: 'no',
-                        comment: `REDUCIDO: ${new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour12: false })}`
+                        comment: `REDUCIDO (${syncLimit}): ${new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour12: false })}`
                     };
                     if (existing && realId) {
                         await queueMenu.set({ '.id': realId, ...queueData });
-                        actions.push(`✔ ${client.nombre} limitado`);
+                        actions.push(`✔ ${client.nombre} limitado (${syncLimit})`);
                     } else {
                         await queueMenu.add(queueData);
-                        actions.push(`➕ ${client.nombre} creado (moroso)`);
+                        actions.push(`➕ ${client.nombre} creado (moroso - ${syncLimit})`);
                     }
                 } else {
                     // 🟢 ACTIVO → queue deshabilitada (libre)
                     const queueData = {
                         name: finalName,
                         target,
-                        'max-limit': '1k/1k',
+                        'max-limit': '0/0',
                         disabled: 'yes',
                         comment: ''
                     };

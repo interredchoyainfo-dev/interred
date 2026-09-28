@@ -178,6 +178,7 @@ export function formatRouterConfig(router) {
     const port = parseInt(router.port || 8728);
     const connectionHost = router.host || router.ip;
     if (!connectionHost) return null;
+    const reductionLimit = router.reductionLimit || router.reductionSpeed || '10k';
     return {
         id: router.id,
         name: router.name || 'Router MikroTik',
@@ -192,12 +193,14 @@ export function formatRouterConfig(router) {
         sstpUser: router.sstpUser || '',
         sstpPassword: router.sstpPassword || '',
         addressList: router.addressList || 'morosos',
+        reductionLimit: reductionLimit,
+        reductionSpeed: reductionLimit,
         active: router.active !== false,
         ssl: port === 8729
     };
 }
 
-// ---- Obtener routers activos para un cliente según su zona ----
+// ---- Obtener routers activos para un cliente según su router asignado o zona ----
 export function getRoutersForClient(client = null) {
     const settings = DB.getSettings();
     const routers = (settings.routers || [])
@@ -206,16 +209,33 @@ export function getRoutersForClient(client = null) {
 
     if (routers.length === 0) return [];
 
-    if (client && client.zona) {
-        const clientZone = normalizeZoneName(client.zona);
-        const matches = routers.filter(r => {
-            const rZone = normalizeZoneName(r.zone);
-            return rZone === clientZone || rZone === 'TODOS';
-        });
-        if (matches.length > 0) return matches;
+    // 1. Si el cliente tiene un router MikroTik asignado explícitamente
+    if (client) {
+        if (client.mikrotik) {
+            const mktLower = String(client.mikrotik).trim().toLowerCase();
+            const match = routers.find(r => 
+                (r.name && r.name.toLowerCase() === mktLower) ||
+                (r.id && r.id.toLowerCase() === mktLower)
+            );
+            if (match) return [match];
+        }
+        if (client.mikrotikId) {
+            const match = routers.find(r => r.id === client.mikrotikId);
+            if (match) return [match];
+        }
+
+        // 2. Si no tiene router explícito, buscar según su zona (comportamiento por defecto)
+        if (client.zona) {
+            const clientZone = normalizeZoneName(client.zona);
+            const matches = routers.filter(r => {
+                const rZone = normalizeZoneName(r.zone);
+                return rZone === clientZone || rZone === 'TODOS';
+            });
+            if (matches.length > 0) return matches;
+        }
     }
 
-    // Si no tiene zona o la zona no coincide, devolver el router activo seleccionado o todos
+    // 3. Fallback: router activo seleccionado o primero de la lista
     const activeRouter = routers[settings.activeRouterIndex || 0] || routers[0];
     return activeRouter ? [activeRouter] : routers;
 }

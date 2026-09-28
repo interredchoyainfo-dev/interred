@@ -334,6 +334,8 @@ const DB = {
             }
         ];
 
+        const DEFAULT_ZONES = ['SOL DE MAYO', 'VILLA LA PUNTA', 'CHOYA', 'FRIAS'];
+
         const defaultSettings = {
             defaultAmount: 30000,
             phone: '3855374835',
@@ -342,8 +344,13 @@ const DB = {
             message10: 'Hola {nombre}, te saludamos de INTER RED 🌐. Te recordamos que hoy día 10 vence tu abono mensual de internet por un valor de ${monto}.\n\nEvitá recargos y cortes en el servicio. Si ya realizaste el pago, por favor enviá el comprobante por este medio.\n\n📍 Ubicación: Choya, Sgo. del Estero.\n📞 Dudas: {telefono}.',
             message13: '⚠️ AVISO IMPORTANTE - INTER RED ⚠️\n\nHola {nombre}, no hemos registrado el pago de tu servicio este mes.\n\nTe informamos que a partir de este momento tu velocidad de navegación ha sido reducida. Para normalizar tu servicio, por favor regularizá tu deuda de ${monto}.\n\nContacto: {telefono}. ¡Gracias!',
             routers: DEFAULT_ROUTERS,
+            zones: DEFAULT_ZONES,
             activeRouterIndex: 0
         };
+
+        if (!CACHE.settings.zones || !Array.isArray(CACHE.settings.zones) || CACHE.settings.zones.length === 0) {
+            CACHE.settings.zones = DEFAULT_ZONES;
+        }
 
         if (!CACHE.settings.routers || !Array.isArray(CACHE.settings.routers) || CACHE.settings.routers.length === 0) {
             return defaultSettings;
@@ -384,6 +391,88 @@ const DB = {
         }
 
         return CACHE.settings;
+    },
+
+    getZones() {
+        const settings = this.getSettings();
+        const setZones = (settings.zones && Array.isArray(settings.zones) && settings.zones.length > 0)
+            ? settings.zones
+            : ['SOL DE MAYO', 'VILLA LA PUNTA', 'CHOYA', 'FRIAS'];
+        
+        // Incluir cualquier zona que tengan clientes existentes para que nunca se pierda nada
+        const clientZones = (CACHE.clients || []).map(c => c.zona).filter(Boolean);
+        const combined = [...new Set([...setZones, ...clientZones])];
+        return combined.map(z => String(z).trim().toUpperCase()).filter(Boolean);
+    },
+
+    async saveZones(zones) {
+        const settings = this.getSettings();
+        settings.zones = [...new Set((zones || []).map(z => String(z).trim().toUpperCase()).filter(Boolean))];
+        await this.saveSettings(settings);
+        return settings.zones;
+    },
+
+    async addZone(zoneName) {
+        if (!zoneName || typeof zoneName !== 'string') return false;
+        const normalized = zoneName.trim().toUpperCase();
+        if (!normalized) return false;
+        const current = this.getZones();
+        if (!current.includes(normalized)) {
+            current.push(normalized);
+            await this.saveZones(current);
+        }
+        return true;
+    },
+
+    async updateZone(oldName, newName) {
+        if (!oldName || !newName) return false;
+        const oldNorm = String(oldName).trim().toUpperCase();
+        const newNorm = String(newName).trim().toUpperCase();
+        if (oldNorm === newNorm) return true;
+
+        const current = this.getZones();
+        const idx = current.indexOf(oldNorm);
+        if (idx >= 0) {
+            current[idx] = newNorm;
+        } else {
+            current.push(newNorm);
+        }
+        await this.saveZones(current);
+
+        // Migrar clientes con la zona antigua
+        let clientsUpdated = 0;
+        for (const client of (CACHE.clients || [])) {
+            if (String(client.zona || '').trim().toUpperCase() === oldNorm) {
+                client.zona = newNorm;
+                await this.saveClient(client);
+                clientsUpdated++;
+            }
+        }
+
+        // Migrar routers con la zona antigua
+        const settings = this.getSettings();
+        if (settings.routers && Array.isArray(settings.routers)) {
+            let routerUpdated = false;
+            settings.routers.forEach(r => {
+                if (String(r.zone || '').trim().toUpperCase() === oldNorm) {
+                    r.zone = newNorm;
+                    routerUpdated = true;
+                }
+            });
+            if (routerUpdated) {
+                await this.saveSettings(settings);
+            }
+        }
+
+        return { success: true, clientsUpdated };
+    },
+
+    async deleteZone(zoneName) {
+        if (!zoneName) return false;
+        const norm = String(zoneName).trim().toUpperCase();
+        const current = this.getZones().filter(z => z !== norm);
+        await this.saveZones(current);
+        return true;
     },
 
     async saveSettings(settings) {
@@ -460,7 +549,7 @@ const DB = {
         });
 
         // Zones breakdown
-        const zones = ['SOL DE MAYO', 'VILLA LA PUNTA', 'CHOYA', 'FRIAS'];
+        const zones = this.getZones();
         const zoneStats = zones.map(zone => {
             const zoneClients = clients.filter(c => c.zona === zone);
             const zonePaid = zoneClients.filter(c =>

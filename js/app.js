@@ -9,7 +9,7 @@ import {
     generateMessage, 
     getMessageLog 
 } from './whatsappService.js';
-import { activateClient, reduceClient, loginBackend } from './mikrotikService.js';
+import { activateClient, reduceClient, loginBackend, normalizeZoneName } from './mikrotikService.js';
 import { 
     safeArray, 
     safeObject, 
@@ -155,6 +155,24 @@ const App = {
         'FRIAS': { avatar: 'avatar-frias', badge: 'badge-frias' },
     },
 
+    getClientMikrotikName(client) {
+        if (!client) return 'MikroTik';
+        if (client.mikrotik) return client.mikrotik;
+        if (client.mikrotikId) {
+            const r = (DB.getSettings().routers || []).find(r => r.id === client.mikrotikId);
+            if (r) return r.name;
+        }
+        // Fallback por zona del cliente
+        if (client.zona) {
+            const cZone = normalizeZoneName(client.zona);
+            const r = (DB.getSettings().routers || []).find(r => normalizeZoneName(r.zone) === cZone);
+            if (r) return r.name;
+        }
+        const activeIdx = DB.getSettings().activeRouterIndex || 0;
+        const def = (DB.getSettings().routers || [])[activeIdx] || (DB.getSettings().routers || [])[0];
+        return def ? def.name : 'MikroTik';
+    },
+
     // ========================================
     // Initialization
     // ========================================
@@ -173,6 +191,8 @@ const App = {
 
         // ===== STEP 1: Bind all UI elements FIRST (synchronous, never fails) =====
         this.injectModernUI();
+        this.refreshAllZoneDropdowns();
+        this.bindZoneEvents();
         this.loadSettings();
         this.bindNavigation();
         this.bindHeaderActions();
@@ -677,6 +697,9 @@ const App = {
                     <div class="client-name">${displayName}</div>
                     <div class="client-meta">
                         <span class="client-zone-badge ${colors.badge}">${client.zona}</span>
+                        <span class="client-router-badge" style="font-size: 10px; background: rgba(59, 130, 246, 0.12); color: var(--accent-blue); padding: 2px 7px; border-radius: 6px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px;">
+                            📡 ${this.getClientMikrotikName(client)}
+                        </span>
                         <span class="client-status ${statusClass}">${statusText}</span>
                     </div>
                 </div>
@@ -922,6 +945,26 @@ const App = {
             ${isEdit ? 'Actualizar' : 'Guardar Cliente'}
         `;
 
+        // Poblar Zonas dinámicas
+        const zones = DB.getZones();
+        const zonaSelect = document.getElementById('client-zona');
+        if (zonaSelect) {
+            zonaSelect.innerHTML = `
+                <option value="">Seleccionar zona...</option>
+                ${zones.map(z => `<option value="${z}">${z}</option>`).join('')}
+            `;
+        }
+
+        // Poblar Routers MikroTik disponibles
+        const routers = (DB.getSettings().routers || []).filter(r => r.active !== false);
+        const mktSelect = document.getElementById('client-mikrotik');
+        if (mktSelect) {
+            mktSelect.innerHTML = `
+                <option value="">Automático (según Zona)</option>
+                ${routers.map(r => `<option value="${r.name}">${r.name} (${r.zone || 'General'})</option>`).join('')}
+            `;
+        }
+
         if (isEdit) {
             const client = DB.getClientById(clientId);
             if (!client) return;
@@ -935,6 +978,12 @@ const App = {
             document.getElementById('client-mac').value = client.mac || '';
             document.getElementById('client-antena').value = client.antena || '';
             document.getElementById('client-router').value = client.router || '';
+            
+            if (mktSelect) {
+                // Por defecto muestra el que tiene asignado o el que corresponde a su zona
+                const currentMkt = client.mikrotik || this.getClientMikrotikName(client);
+                mktSelect.value = currentMkt;
+            }
         } else {
             document.getElementById('form-client').reset();
             document.getElementById('client-id').value = '';
@@ -943,6 +992,20 @@ const App = {
             document.getElementById('client-mac').value = '';
             document.getElementById('client-antena').value = '';
             document.getElementById('client-router').value = '';
+            if (mktSelect) mktSelect.value = '';
+        }
+
+        // Al cambiar de zona, sugerir el router correspondiente si no hay uno fijo
+        if (zonaSelect && mktSelect) {
+            zonaSelect.onchange = () => {
+                if (!mktSelect.value || mktSelect.value === '') {
+                    const temp = { zona: zonaSelect.value };
+                    const autoMkt = this.getClientMikrotikName(temp);
+                    if (autoMkt && routers.some(r => r.name.toLowerCase() === autoMkt.toLowerCase())) {
+                        mktSelect.value = autoMkt;
+                    }
+                }
+            };
         }
 
         this.openModal('modal-client');
@@ -1003,6 +1066,10 @@ const App = {
                     <div class="detail-info-item">
                         <div class="detail-info-label">Zona</div>
                         <div class="detail-info-value">${client.zona}</div>
+                    </div>
+                    <div class="detail-info-item">
+                        <div class="detail-info-label">Router MikroTik</div>
+                        <div class="detail-info-value" style="color: var(--accent-blue); font-weight: 700;">📡 ${this.getClientMikrotikName(client)}</div>
                     </div>
                     <div class="detail-info-item">
                         <div class="detail-info-label">Estado</div>
@@ -1149,6 +1216,7 @@ const App = {
             apellido: document.getElementById('client-apellido').value.trim(),
             whatsapp: document.getElementById('client-whatsapp').value.trim(),
             zona: document.getElementById('client-zona').value,
+            mikrotik: document.getElementById('client-mikrotik')?.value.trim() || '',
             estado: document.getElementById('client-estado').value,
             ip: document.getElementById('client-ip').value.trim() || '0.0.0.0',
             mac: document.getElementById('client-mac').value.trim(),
@@ -1242,35 +1310,47 @@ const App = {
     // Filters
     // ========================================
     bindFilters() {
-        // Client zone chips
-        document.querySelectorAll('#filter-chips .chip').forEach(chip => {
-            chip.addEventListener('click', () => {
-                document.querySelectorAll('#filter-chips .chip').forEach(c => c.classList.remove('active'));
+        // Client zone chips con delegación de eventos
+        const filterChips = document.getElementById('filter-chips');
+        if (filterChips && !filterChips._bound) {
+            filterChips._bound = true;
+            filterChips.addEventListener('click', (e) => {
+                const chip = e.target.closest('.chip');
+                if (!chip) return;
+                filterChips.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
                 chip.classList.add('active');
                 this.currentZoneFilter = chip.dataset.zone;
                 this.renderClients();
             });
-        });
+        }
 
         // Client status chips (Todos, Pagados, Pendientes)
-        document.querySelectorAll('#client-status-filter-chips .chip').forEach(chip => {
-            chip.addEventListener('click', () => {
-                document.querySelectorAll('#client-status-filter-chips .chip').forEach(c => c.classList.remove('active'));
+        const clientStatusChips = document.getElementById('client-status-filter-chips');
+        if (clientStatusChips && !clientStatusChips._bound) {
+            clientStatusChips._bound = true;
+            clientStatusChips.addEventListener('click', (e) => {
+                const chip = e.target.closest('.chip');
+                if (!chip) return;
+                clientStatusChips.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
                 chip.classList.add('active');
                 this.currentClientStatusFilter = chip.dataset.status;
                 this.renderClients();
             });
-        });
+        }
 
-        // Payment zone chips
-        document.querySelectorAll('#payment-filter-chips .chip').forEach(chip => {
-            chip.addEventListener('click', () => {
-                document.querySelectorAll('#payment-filter-chips .chip').forEach(c => c.classList.remove('active'));
+        // Payment zone chips con delegación de eventos
+        const paymentChips = document.getElementById('payment-filter-chips');
+        if (paymentChips && !paymentChips._bound) {
+            paymentChips._bound = true;
+            paymentChips.addEventListener('click', (e) => {
+                const chip = e.target.closest('.chip');
+                if (!chip) return;
+                paymentChips.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
                 chip.classList.add('active');
                 this.currentPaymentZoneFilter = chip.dataset.zone;
                 this.renderPayments();
             });
-        });
+        }
 
         // Payment status chips
         document.querySelectorAll('.chip-status').forEach(chip => {
@@ -1362,12 +1442,20 @@ const App = {
 
     loadSettings() {
         const settings = DB.getSettings();
-        document.getElementById('setting-default-amount').value = settings.defaultAmount;
-        document.getElementById('setting-phone').value = settings.phone;
-        document.getElementById('setting-reminder-10').checked = settings.reminder10Enabled;
-        document.getElementById('setting-reminder-13').checked = settings.reminder13Enabled;
-        document.getElementById('setting-msg-10').value = settings.message10;
-        document.getElementById('setting-msg-13').value = settings.message13;
+        const amtEl = document.getElementById('setting-default-amount');
+        if (amtEl) amtEl.value = settings.defaultAmount;
+        const phoneEl = document.getElementById('setting-phone');
+        if (phoneEl) phoneEl.value = settings.phone;
+        const r10 = document.getElementById('setting-reminder-10');
+        if (r10) r10.checked = settings.reminder10Enabled;
+        const r13 = document.getElementById('setting-reminder-13');
+        if (r13) r13.checked = settings.reminder13Enabled;
+        const m10 = document.getElementById('setting-msg-10');
+        if (m10) m10.value = settings.message10;
+        const m13 = document.getElementById('setting-msg-13');
+        if (m13) m13.value = settings.message13;
+
+        this.renderZonesSettings();
     },
 
     async saveSettingsFromForm() {
@@ -1388,6 +1476,173 @@ const App = {
         const hasDefault = Array.from(quickBtns).some(b => parseInt(b.dataset.amount) === settings.defaultAmount);
         if (!hasDefault) {
             quickBtns.forEach(b => b.classList.remove('active'));
+        }
+    },
+
+    // ========================================
+    // Gestión de Zonas (Ajustes)
+    // ========================================
+    renderZonesSettings() {
+        const listEl = document.getElementById('settings-zones-list');
+        if (!listEl) return;
+
+        const zones = DB.getZones();
+        const clients = DB.getClients();
+
+        if (zones.length === 0) {
+            listEl.innerHTML = `<div style="text-align: center; padding: 16px; opacity: 0.6; font-size: 12px;">No hay zonas configuradas. Agrega una nueva zona arriba.</div>`;
+            return;
+        }
+
+        listEl.innerHTML = zones.map(zone => {
+            const count = clients.filter(c => normalizeZoneName(c.zona) === normalizeZoneName(zone)).length;
+            return `
+                <div class="glass" style="padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--bg-surface-elevated);">
+                    <div>
+                        <div style="font-weight: 800; font-size: 14px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                            <span>📍 ${zone}</span>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-secondary); opacity: 0.8; margin-top: 2px;">
+                            ${count} ${count === 1 ? 'cliente registrado' : 'clientes registrados'}
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" class="btn-action-sm glass btn-edit-zone" data-zone="${zone}" style="height: 32px; font-size: 12px; font-weight: 700; cursor: pointer;">
+                            ✏️ Editar
+                        </button>
+                        <button type="button" class="btn-action-sm glass btn-delete-zone" data-zone="${zone}" data-count="${count}" style="height: 32px; font-size: 12px; color: var(--accent-red); font-weight: 700; cursor: pointer;">
+                            🗑️ Eliminar
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Bind Edit buttons
+        listEl.querySelectorAll('.btn-edit-zone').forEach(btn => {
+            btn.onclick = () => {
+                const zone = btn.dataset.zone;
+                document.getElementById('modal-zone-title').textContent = `✏️ Editar Zona: ${zone}`;
+                document.getElementById('zone-old-name').value = zone;
+                document.getElementById('zone-name-input').value = zone;
+                this.openModal('modal-zone');
+            };
+        });
+
+        // Bind Delete buttons
+        listEl.querySelectorAll('.btn-delete-zone').forEach(btn => {
+            btn.onclick = async () => {
+                const zone = btn.dataset.zone;
+                const count = parseInt(btn.dataset.count) || 0;
+                
+                let msg = `¿Estás seguro de eliminar la zona "${zone}"?`;
+                if (count > 0) {
+                    msg = `⚠️ La zona "${zone}" tiene ${count} clientes asignados. Si la eliminas, esos clientes quedarán sin zona activa. ¿Continuar de todas formas?`;
+                }
+
+                if (!confirm(msg)) return;
+
+                await DB.deleteZone(zone);
+                this.showToast(`🗑️ Zona "${zone}" eliminada exitosamente.`, 'success');
+                this.refreshAllZoneDropdowns();
+                this.renderZonesSettings();
+                this.renderDashboard();
+            };
+        });
+    },
+
+    bindZoneEvents() {
+        // Botón Nueva Zona
+        const btnAdd = document.getElementById('btn-add-zone');
+        if (btnAdd) {
+            btnAdd.onclick = () => {
+                document.getElementById('modal-zone-title').textContent = '➕ Nueva Zona / Pueblo';
+                document.getElementById('zone-old-name').value = '';
+                document.getElementById('zone-name-input').value = '';
+                this.openModal('modal-zone');
+            };
+        }
+
+        // Botones cerrar modal zona
+        const btnClose = document.getElementById('modal-zone-close');
+        if (btnClose) btnClose.onclick = () => this.closeModal('modal-zone');
+        const btnCancel = document.getElementById('btn-cancel-zone');
+        if (btnCancel) btnCancel.onclick = () => this.closeModal('modal-zone');
+
+        // Formulario guardar zona
+        const formZone = document.getElementById('form-zone');
+        if (formZone) {
+            formZone.onsubmit = async (e) => {
+                e.preventDefault();
+                const oldName = document.getElementById('zone-old-name')?.value.trim();
+                const newName = document.getElementById('zone-name-input')?.value.trim().toUpperCase();
+
+                if (!newName) {
+                    this.showToast('⚠️ Ingresa un nombre para la zona', 'warning');
+                    return;
+                }
+
+                if (oldName) {
+                    const res = await DB.updateZone(oldName, newName);
+                    this.showToast(`✅ Zona actualizada a "${newName}" (${res.clientsUpdated || 0} clientes actualizados)`, 'success');
+                } else {
+                    await DB.addZone(newName);
+                    this.showToast(`✅ Zona "${newName}" creada exitosamente`, 'success');
+                }
+
+                this.closeModal('modal-zone');
+                this.refreshAllZoneDropdowns();
+                this.renderZonesSettings();
+                this.renderDashboard();
+            };
+        }
+    },
+
+    refreshAllZoneDropdowns() {
+        const zones = DB.getZones();
+
+        // 1. Selector de zona en modal de clientes
+        const clientZonaSelect = document.getElementById('client-zona');
+        if (clientZonaSelect) {
+            const current = clientZonaSelect.value;
+            clientZonaSelect.innerHTML = `
+                <option value="">Seleccionar zona...</option>
+                ${zones.map(z => `<option value="${z}">${z}</option>`).join('')}
+            `;
+            if (current && zones.includes(current)) {
+                clientZonaSelect.value = current;
+            }
+        }
+
+        // 2. Selector de zona en configuración de MikroTik
+        const mktZoneSelect = document.getElementById('setting-mikrotik-zone');
+        if (mktZoneSelect) {
+            const currentMkt = mktZoneSelect.value;
+            mktZoneSelect.innerHTML = `
+                ${zones.map(z => `<option value="${z}">${z}</option>`).join('')}
+                <option value="TODOS">Todas las Zonas (General)</option>
+            `;
+            if (currentMkt) mktZoneSelect.value = currentMkt;
+        }
+
+        // 3. Chips de filtro en Clientes
+        const filterChips = document.getElementById('filter-chips');
+        if (filterChips) {
+            const activeZone = this.currentZoneFilter || 'ALL';
+            filterChips.innerHTML = `
+                <button class="chip ${activeZone === 'ALL' ? 'active' : ''}" data-zone="ALL">Todos los Pueblos</button>
+                ${zones.map(z => `<button class="chip ${activeZone === z ? 'active' : ''}" data-zone="${z}">${z}</button>`).join('')}
+            `;
+        }
+
+        // 4. Chips de filtro en Cobros
+        const paymentChips = document.getElementById('payment-filter-chips');
+        if (paymentChips) {
+            const activePayZone = this.currentPaymentZoneFilter || 'ALL';
+            paymentChips.innerHTML = `
+                <button class="chip ${activePayZone === 'ALL' ? 'active' : ''}" data-zone="ALL">Todos</button>
+                ${zones.map(z => `<button class="chip ${activePayZone === z ? 'active' : ''}" data-zone="${z}">${z}</button>`).join('')}
+            `;
         }
     },
 
@@ -2021,6 +2276,10 @@ const App = {
             if (listEl) listEl.value = 'morosos';
             if (activeEl) activeEl.checked = true;
             if (scriptEl) scriptEl.value = '';
+            const limitEl = document.getElementById('setting-mikrotik-limit');
+            const presetEl = document.getElementById('setting-mikrotik-limit-preset');
+            if (limitEl) limitEl.value = '10k';
+            if (presetEl) presetEl.value = '10k';
             if (titleEl) titleEl.textContent = '➕ Nuevo Router MikroTik';
 
             document.getElementById('sec-router-form')?.scrollIntoView({ behavior: 'smooth' });
@@ -2028,6 +2287,22 @@ const App = {
 
         this._bind('btn-add-router-top', resetForm);
         this._bind('btn-cancel-edit-router', resetForm);
+
+        // Control de preset de velocidad de reducción
+        const presetEl = document.getElementById('setting-mikrotik-limit-preset');
+        const limitInput = document.getElementById('setting-mikrotik-limit');
+        if (presetEl && limitInput) {
+            presetEl.onchange = () => {
+                if (presetEl.value !== 'custom') {
+                    limitInput.value = presetEl.value;
+                }
+            };
+            limitInput.oninput = () => {
+                const known = ['1k', '10k', '32k', '64k', '128k', '256k', '512k'];
+                const val = limitInput.value.trim().toLowerCase();
+                presetEl.value = known.includes(val) ? val : 'custom';
+            };
+        }
 
         // 3. Autocompletar desde script VPN
         this._bind('btn-parse-script', async () => {
@@ -2076,6 +2351,7 @@ const App = {
             const addressList = document.getElementById('setting-mikrotik-list')?.value.trim() || 'morosos';
             const active = document.getElementById('setting-mikrotik-active') ? document.getElementById('setting-mikrotik-active').checked : true;
             const script = document.getElementById('setting-mikrotik-script')?.value || '';
+            const reductionLimit = document.getElementById('setting-mikrotik-limit')?.value.trim() || '10k';
 
             if (!name || !host || !port || !user || !password) {
                 this.showToast('⚠️ Completa Nombre, Host, Puerto API, Usuario y Contraseña.', 'warning');
@@ -2096,6 +2372,8 @@ const App = {
                 sstpUser,
                 sstpPassword,
                 addressList,
+                reductionLimit,
+                reductionSpeed: reductionLimit,
                 active,
                 script
             };
@@ -2109,7 +2387,7 @@ const App = {
             }
 
             await DB.saveSettings(currentSettings);
-            this.showToast(`💾 Router "${name}" guardado exitosamente.`, 'success');
+            this.showToast(`💾 Router "${name}" guardado exitosamente (Reducción: ${reductionLimit}).`, 'success');
             await this.loadMikrotikDashboard();
         });
 
@@ -2692,6 +2970,10 @@ const App = {
                             <span style="opacity: 0.5; display: block; font-size: 9px;">CLIENTE SSTP</span>
                             <span style="font-family: monospace; color: var(--text-secondary);">${sstp}</span>
                         </div>
+                        <div>
+                            <span style="opacity: 0.5; display: block; font-size: 9px;">REDUCCIÓN</span>
+                            <span style="font-weight: 700; color: var(--accent-amber);">${r.reductionLimit || r.reductionSpeed || '10k'}</span>
+                        </div>
                         ${statusInfo?.uptime ? `
                         <div>
                             <span style="opacity: 0.5; display: block; font-size: 9px;">UPTIME</span>
@@ -2739,6 +3021,8 @@ const App = {
         const listEl = document.getElementById('setting-mikrotik-list');
         const activeEl = document.getElementById('setting-mikrotik-active');
         const scriptEl = document.getElementById('setting-mikrotik-script');
+        const limitEl = document.getElementById('setting-mikrotik-limit');
+        const presetEl = document.getElementById('setting-mikrotik-limit-preset');
         const titleEl = document.getElementById('form-mikrotik-title');
 
         if (idEl) idEl.value = router.id || '';
@@ -2755,6 +3039,12 @@ const App = {
         if (listEl) listEl.value = router.addressList || 'morosos';
         if (activeEl) activeEl.checked = router.active !== false;
         if (scriptEl) scriptEl.value = router.script || '';
+        const rLimit = router.reductionLimit || router.reductionSpeed || '10k';
+        if (limitEl) limitEl.value = rLimit;
+        if (presetEl) {
+            const known = ['1k', '10k', '32k', '64k', '128k', '256k', '512k'];
+            presetEl.value = known.includes(rLimit.toLowerCase()) ? rLimit.toLowerCase() : 'custom';
+        }
         if (titleEl) titleEl.textContent = `✏️ Editando Router: ${router.name}`;
     },
 

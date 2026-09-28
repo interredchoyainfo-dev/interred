@@ -458,6 +458,28 @@
                                 </div>
                             </div>
 
+                            <!-- Velocidad de Reducción (Kbps) -->
+                            <div style="background: rgba(227, 6, 19, 0.04); border: 1px solid rgba(227, 6, 19, 0.2); border-radius: 12px; padding: 12px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                    <label style="font-size: 10px; font-weight: 800; color: var(--accent-red); margin: 0; display: block;">VELOCIDAD DE REDUCCIÓN (Kbps) *</label>
+                                    <span style="font-size: 10px; opacity: 0.6; color: var(--text-secondary);">max-limit al suspender</span>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                    <input type="text" id="setting-mikrotik-limit" class="setting-input glass" placeholder="10k" value="10k" style="font-weight: 700;">
+                                    <select id="setting-mikrotik-limit-preset" class="setting-input glass" style="height: 48px; font-weight: 600; font-size: 12px;">
+                                        <option value="custom">Personalizado</option>
+                                        <option value="1k">1 Kbps (Corte estricto)</option>
+                                        <option value="10k" selected>10 Kbps (Recomendado)</option>
+                                        <option value="32k">32 Kbps</option>
+                                        <option value="64k">64 Kbps</option>
+                                        <option value="128k">128 Kbps</option>
+                                        <option value="256k">256 Kbps</option>
+                                        <option value="512k">512 Kbps</option>
+                                    </select>
+                                </div>
+                                <span style="font-size: 10px; opacity: 0.6; margin-top: 4px; display: block;">Límite en Simple Queue para clientes deudores (ej: 10k aplicará 10k/10k).</span>
+                            </div>
+
                             <!-- Address List y Activo para Cortes -->
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center;">
                                 <div>
@@ -506,6 +528,24 @@
                             <div style="font-size: 0.8rem; opacity: 0.6;">API, Host y Address Lists</div>
                         </div>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="opacity: 0.3;"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+
+                    <!-- Gestión de Zonas y Cobertura -->
+                    <div class="settings-group glass" id="sec-zones-management" style="margin-bottom: 24px; padding: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                            <div>
+                                <h3 class="settings-group-title" style="margin: 0; font-size: 1.05rem;">📍 Gestión de Zonas / Pueblos</h3>
+                                <p style="font-size: 11px; color: var(--text-secondary); margin: 3px 0 0 0;">Crea nuevas zonas, edita sus nombres o elimínalas del sistema</p>
+                            </div>
+                            <button type="button" class="btn-action-sm" id="btn-add-zone" style="background: var(--accent-red); color: white; border: none; font-weight: 800; height: 36px; padding: 0 14px; border-radius: 8px; cursor: pointer;">
+                                + Nueva Zona
+                            </button>
+                        </div>
+
+                        <!-- Lista Dinámica de Zonas -->
+                        <div id="settings-zones-list" style="display: flex; flex-direction: column; gap: 8px;">
+                            <!-- Inyectado por JS -->
+                        </div>
                     </div>
 
                     <div class="settings-group glass">
@@ -739,6 +779,13 @@
                             </select>
                         </div>
                         <div class="form-group">
+                            <label class="form-label" for="client-mikrotik">Router MikroTik Asignado</label>
+                            <select id="client-mikrotik" class="form-select">
+                                <option value="">Automático (según Zona)</option>
+                            </select>
+                            <span style="font-size: 10px; opacity: 0.6; margin-top: 4px; display: block;">Por defecto se asigna automáticamente al MikroTik correspondiente a su zona.</span>
+                        </div>
+                        <div class="form-group">
                             <label class="form-label" for="client-estado">Estado</label>
                             <select id="client-estado" class="form-select">
                                 <option value="Activo">Activo</option>
@@ -877,6 +924,31 @@
                     <div id="moroso-client-results" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
                         <!-- Populated by JS -->
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add/Edit Zone Modal -->
+        <div class="modal-overlay hidden" id="modal-zone">
+            <div class="modal modal-sm">
+                <div class="modal-header">
+                    <h2 class="modal-title" id="modal-zone-title">Nueva Zona</h2>
+                    <button class="modal-close" id="modal-zone-close">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-zone">
+                        <input type="hidden" id="zone-old-name">
+                        <div class="form-group">
+                            <label class="form-label" for="zone-name-input">Nombre de la Zona / Pueblo *</label>
+                            <input type="text" id="zone-name-input" class="form-input" placeholder="Ej: SAN PEDRO, LAPRIDA..." required style="text-transform: uppercase; font-weight: 700;">
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-top: 20px;">
+                            <button type="button" class="btn-secondary" id="btn-cancel-zone" style="flex: 1;">Cancelar</button>
+                            <button type="submit" class="btn-primary" id="btn-save-zone" style="flex: 1; background: var(--accent-red);">Guardar Zona</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
