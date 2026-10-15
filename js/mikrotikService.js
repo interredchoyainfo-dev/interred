@@ -209,34 +209,66 @@ export function getRoutersForClient(client = null) {
 
     if (routers.length === 0) return [];
 
-    // 1. Si el cliente tiene un router MikroTik asignado explícitamente
+    // 1. Si el cliente tiene un router MikroTik asignado explícitamente (por nombre o ID)
     if (client) {
+        if (client.mikrotikId) {
+            const match = routers.find(r => r.id === client.mikrotikId);
+            if (match) {
+                console.log(`[getRoutersForClient] ✅ Match por mikrotikId: ${match.name}`);
+                return [match];
+            }
+        }
         if (client.mikrotik) {
             const mktLower = String(client.mikrotik).trim().toLowerCase();
-            const match = routers.find(r => 
+            const match = routers.find(r =>
                 (r.name && r.name.toLowerCase() === mktLower) ||
                 (r.id && r.id.toLowerCase() === mktLower)
             );
-            if (match) return [match];
-        }
-        if (client.mikrotikId) {
-            const match = routers.find(r => r.id === client.mikrotikId);
-            if (match) return [match];
+            if (match) {
+                console.log(`[getRoutersForClient] ✅ Match por mikrotik (nombre): ${match.name}`);
+                return [match];
+            }
         }
 
-        // 2. Si no tiene router explícito, buscar según su zona (comportamiento por defecto)
+        // 2. Buscar según zona del cliente
         if (client.zona) {
             const clientZone = normalizeZoneName(client.zona);
             const matches = routers.filter(r => {
                 const rZone = normalizeZoneName(r.zone);
-                return rZone === clientZone || rZone === 'TODOS';
+                // Comparar zona del router contra zona del cliente
+                if (rZone === clientZone) return true;
+                // Si el router está configurado como "TODOS", aplica a cualquier zona
+                if (rZone === 'TODOS') return true;
+                // Fallback: comparar el NOMBRE del router contra la zona del cliente
+                // (para cuando los routers no tienen el campo zone bien configurado)
+                const rName = normalizeZoneName(r.name);
+                if (rName === clientZone) return true;
+                // Comparación parcial: el nombre del router contiene la zona o viceversa
+                if (rName.includes(clientZone) || clientZone.includes(rName)) return true;
+                return false;
+            }).filter(r => normalizeZoneName(r.zone) !== 'TODOS' || routers.filter(x => normalizeZoneName(x.zone) === clientZone || normalizeZoneName(x.name) === clientZone).length === 0);
+
+            // Priorizar routers con zona exacta sobre los "TODOS"
+            const exactMatches = matches.filter(r => {
+                const rZone = normalizeZoneName(r.zone);
+                const rName = normalizeZoneName(r.name);
+                return rZone === clientZone || rName === clientZone || rName.includes(clientZone) || clientZone.includes(rName);
             });
-            if (matches.length > 0) return matches;
+
+            if (exactMatches.length > 0) {
+                console.log(`[getRoutersForClient] ✅ Match por zona "${client.zona}": ${exactMatches.map(r => r.name).join(', ')}`);
+                return exactMatches;
+            }
+            if (matches.length > 0) {
+                console.log(`[getRoutersForClient] ✅ Match por zona (TODOS) para "${client.zona}": ${matches.map(r => r.name).join(', ')}`);
+                return matches;
+            }
         }
     }
 
     // 3. Fallback: router activo seleccionado o primero de la lista
     const activeRouter = routers[settings.activeRouterIndex || 0] || routers[0];
+    console.warn(`[getRoutersForClient] ⚠️ Fallback al router por defecto: ${activeRouter?.name} (cliente: ${client?.nombre} zona: ${client?.zona}). Asignale un router explícito al cliente.`);
     return activeRouter ? [activeRouter] : routers;
 }
 

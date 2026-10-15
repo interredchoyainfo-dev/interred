@@ -1211,12 +1211,19 @@ const App = {
 
     async saveClient() {
         const id = document.getElementById('client-id').value;
+        const mikrotikName = document.getElementById('client-mikrotik')?.value.trim() || '';
+        // Buscar el ID del router seleccionado para mayor robustez en el match
+        const routers = DB.getSettings().routers || [];
+        const matchedRouter = mikrotikName
+            ? routers.find(r => r.name === mikrotikName || r.id === mikrotikName)
+            : null;
         const client = {
             nombre: document.getElementById('client-nombre').value.trim(),
             apellido: document.getElementById('client-apellido').value.trim(),
             whatsapp: document.getElementById('client-whatsapp').value.trim(),
             zona: document.getElementById('client-zona').value,
-            mikrotik: document.getElementById('client-mikrotik')?.value.trim() || '',
+            mikrotik: mikrotikName,
+            mikrotikId: matchedRouter ? matchedRouter.id : '',
             estado: document.getElementById('client-estado').value,
             ip: document.getElementById('client-ip').value.trim() || '0.0.0.0',
             mac: document.getElementById('client-mac').value.trim(),
