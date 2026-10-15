@@ -3079,6 +3079,8 @@ const App = {
             return;
         }
 
+        const statusEl = document.getElementById('mk-connection-status') || document.getElementById('mk-status');
+
         const config = {
             host: router.host,
             port: parseInt(router.port || '8728'),

@@ -1,4 +1,22 @@
 import { RouterOSClient } from 'routeros-client';
+import { Channel } from 'node-routeros/dist/Channel.js';
+
+// Parche de compatibilidad MikroTik RouterOS v7 (Villa La Punta, Frías y nuevos routers):
+// En RouterOS v7.13+, cuando un menú o consulta está vacío, MikroTik responde '!empty'.
+// La librería node-routeros no reconoce '!empty' y lanza RosException('UNKNOWNREPLY'),
+// colgando la conexión y provocando Timeout (30s). Al ignorar '!empty', el canal resuelve
+// la respuesta vacía de forma limpia y transparente para cualquier versión de RouterOS.
+if (Channel && Channel.prototype && !Channel.prototype._v7EmptyPatched) {
+    Channel.prototype._v7EmptyPatched = true;
+    const originalProcessPacket = Channel.prototype.processPacket;
+    Channel.prototype.processPacket = function(packet) {
+        if (Array.isArray(packet) && packet[0] === '!empty') {
+            packet.shift();
+            return;
+        }
+        return originalProcessPacket.call(this, packet);
+    };
+}
 
 // BUG #12 corregido: valida que cada octeto esté entre 0 y 255
 function isValidIP(ip) {
@@ -32,7 +50,8 @@ async function withMikrotik(config, callback) {
         port: port,
         user: config?.user,
         password: config?.password,
-        keepalive: false
+        keepalive: false,
+        timeout: 15
     };
 
     if (useTLS) {
