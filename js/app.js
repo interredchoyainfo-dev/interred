@@ -205,8 +205,7 @@ const App = {
         this.bindMikrotik();
         
         // Bind Sync Buttons
-        this._bind('btn-sync-morosos', () => this.syncMikrotik());
-        this._bind('btn-sync-mikrotik-main', () => this.syncMikrotik());
+        this._bind('btn-sync-morosos', () => this.syncMorosos());
 
         // HEARTBEAT SERVIDOR (Check every 10s)
         setInterval(async () => {
@@ -1305,9 +1304,6 @@ const App = {
         } else {
             this.showToast('Pago registrado exitosamente', 'success');
         }
-
-        // 🔄 SYNC AUTOMÁTICO
-        this.syncMikrotik(true); // silent sync
 
         this.closeModal('modal-payment');
         this.refreshCurrentView();
@@ -2535,16 +2531,11 @@ const App = {
                 } else if (action === 'sync') {
                     btn.textContent = '⏳ Sincronizando...';
                     try {
-                        const { syncMikrotik } = await import('./mikrotikService.js');
-                        const res = await syncMikrotik({
-                            host: router.host,
-                            port: parseInt(router.port || '8728'),
-                            user: router.user,
-                            password: router.password,
-                            addressList: router.addressList || 'morosos'
-                        }, DB.getClients(), DB.getMorosos(), false);
+                        const { syncMikrotik, formatRouterConfig } = await import('./mikrotikService.js');
+                        const config = formatRouterConfig(router);
+                        const res = await syncMikrotik(config, DB.getClients(), DB.getMorosos(), false);
                         if (res && res.success) {
-                            this.showToast(`✅ Sincronizados clientes y morosos en ${router.name}`, 'success');
+                            this.showToast(`✅ Sincronizados cortes en ${router.name}`, 'success');
                         } else {
                             this.showToast(`❌ Error: ${res?.message}`, 'error');
                         }
@@ -2610,26 +2601,23 @@ const App = {
 
         // ======== SYNC BUTTONS ========
         const handleSync = async (clean = false) => {
-            const clients = DB.getClients();
-            const morosos = DB.getMorosos(); // Using actual morosos list
             const settings = DB.getSettings();
-            const router = settings.routers[settings.activeRouterIndex];
-            
-            const config = {
-                host: router.host,
-                port: parseInt(router.port || '8728'),
-                user: router.user,
-                password: router.password
-            };
+            const router = settings.routers[settings.activeRouterIndex] || settings.routers[0];
+            if (!router) {
+                this.showToast('No hay router configurado', 'error');
+                return;
+            }
 
-            this.showToast(clean ? 'Sincronizando clientes (sin comentarios)...' : 'Iniciando sincronización completa...', 'info');
+            const { syncMikrotik, formatRouterConfig } = await import('./mikrotikService.js');
+            const config = formatRouterConfig(router);
+
+            this.showToast(clean ? `Limpiando y sincronizando cortes en ${router.name}...` : `Sincronizando cortes en ${router.name}...`, 'info');
             
             try {
-                const { syncMikrotik } = await import('./mikrotikService.js');
-                const res = await syncMikrotik(config, clients, morosos, clean);
+                const res = await syncMikrotik(config, DB.getClients(), DB.getMorosos(), clean);
                 
                 if (res && res.success) {
-                    this.showToast('✅ Sincronización completada con éxito.', 'success');
+                    this.showToast(`✅ Sincronización de cortes en ${router.name} completada.`, 'success');
                     console.log("[SYNC ACTIONS]", res.actions);
                 } else {
                     this.showToast(`❌ Error en sincronización: ${res?.message}`, 'error');
@@ -3383,17 +3371,16 @@ const App = {
                 return;
             }
 
-            const config = {
-                host: router.host,
-                port: parseInt(router.port || '8728'),
-                user: router.user,
-                password: router.password
-            };
+            const { syncMikrotik, formatRouterConfig } = await import('./mikrotikService.js');
+            const config = formatRouterConfig(router);
+            if (!config) {
+                if (!silent) this.showToast('Configuración del router inválida', 'error');
+                return;
+            }
 
             const clients = DB.getClients();
             const morosos = DB.getMorosos();
 
-            const { syncMikrotik } = await import('./mikrotikService.js');
             const res = await syncMikrotik(config, clients, morosos);
 
             if (res.success) {

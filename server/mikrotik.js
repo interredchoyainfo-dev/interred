@@ -40,6 +40,47 @@ function safeName(name) {
         .replace(/^_|_$/g, '');           // elimina guiones al inicio/fin
 }
 
+export function normalizeZoneName(zone) {
+    if (!zone) return '';
+    return String(zone)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toUpperCase();
+}
+
+export function clientBelongsToRouter(client, routerConfig) {
+    if (!client || !routerConfig) return false;
+
+    // 1. Asignación explícita por mikrotikId
+    if (client.mikrotikId) {
+        if (routerConfig.id && client.mikrotikId === routerConfig.id) return true;
+        return false;
+    }
+
+    // 2. Asignación explícita por nombre de router
+    if (client.mikrotik) {
+        const mktLower = String(client.mikrotik).trim().toLowerCase();
+        const rNameLower = String(routerConfig.name || '').trim().toLowerCase();
+        const rIdLower = String(routerConfig.id || '').trim().toLowerCase();
+        if (mktLower === rNameLower || mktLower === rIdLower) return true;
+        return false;
+    }
+
+    // 3. Comparación por zona
+    if (client.zona) {
+        const clientZone = normalizeZoneName(client.zona);
+        const rZone = normalizeZoneName(routerConfig.zone);
+        const rName = normalizeZoneName(routerConfig.name);
+
+        if (rZone === clientZone || rName === clientZone) return true;
+        if (rName && clientZone && (rName.includes(clientZone) || clientZone.includes(rName))) return true;
+        if (rZone === 'TODOS') return true;
+    }
+
+    return false;
+}
+
 async function withMikrotik(config, callback) {
     const port = parseInt(config?.port || 8728);
     const useTLS = config?.ssl !== undefined ? !!config.ssl : (port === 8729);
@@ -174,9 +215,11 @@ async function handleQueue(api, ip, clientName, shouldBeReduced, reductionSpeed 
         if (realId) {
             console.log(`[handleQueue] Actualizando cola existente (id: ${realId})`);
             await queueMenu.set({ '.id': realId, ...queueData });
-        } else {
-            console.log(`[handleQueue] Creando nueva cola: ${finalName}`);
+        } else if (shouldBeReduced) {
+            console.log(`[handleQueue] Creando nueva cola de corte: ${finalName}`);
             await queueMenu.add(queueData);
+        } else {
+            console.log(`[handleQueue] Cliente activo y sin cola previa: no se crea regla innecesaria.`);
         }
 
         return { 
@@ -334,8 +377,6 @@ export async function updateClientQueue(config, ip, clientName, action) {
     return activateClient(config, ip, clientName);
 }
 
-// BUG #9 corregido: la limpieza de huérfanos ya no depende del prefijo 'IP_'
-// Busca por target (IP) que no esté en la lista de clientes
 export async function syncClientsWithMikrotik(config, clients, morosos, clean = false) {
     return withMikrotik(config, async (api) => {
         const queueMenu = api.menu('/queue/simple');
@@ -349,16 +390,19 @@ export async function syncClientsWithMikrotik(config, clients, morosos, clean = 
 
         let actions = [];
         const syncLimit = formatLimit(config?.reductionLimit || config?.reductionSpeed || config?.maxLimit || '10k/10k');
-        console.log(`[SYNC] Sincronizando ${clients.length} clientes... (clean: ${clean}, límite reducción: ${syncLimit})`);
+        
+        // 1. Filtrar ÚNICAMENTE clientes que corresponden a este router MikroTik
+        const routerClients = (clients || []).filter(c => clientBelongsToRouter(c, config));
+        console.log(`[SYNC] Sincronizando router "${config?.name}" (${config?.zone || 'General'}). Clientes de esta zona: ${routerClients.length} (de ${clients.length} totales en BD). (clean: ${clean}, límite: ${syncLimit})`);
 
-        for (const client of clients) {
+        for (const client of routerClients) {
             try {
                 if (!client.ip || client.ip === '0.0.0.0') continue;
 
                 const cleanIP = client.ip.split('/')[0].trim();
                 const target = `${cleanIP}/32`;
 
-                const isMoroso = morosos.some(m => m.clientId === client.id) || client.estado === 'Deudor';
+                const isMoroso = (morosos || []).some(m => (m.clientId || m.id) === client.id) || client.estado === 'Deudor' || client.estado === 'Reducido';
 
                 const existing = queues.find(q => {
                     const qTarget = (q.target || '').trim();
@@ -371,7 +415,7 @@ export async function syncClientsWithMikrotik(config, clients, morosos, clean = 
                 const finalName = safeName(fullName);
 
                 if (isMoroso) {
-                    // 🔴 MOROSO → queue habilitada (limitada)
+                    // 🔴 MOROSO / REDUCIDO → queue habilitada (limitada) + address-list
                     const queueData = {
                         name: finalName,
                         target,
@@ -386,22 +430,26 @@ export async function syncClientsWithMikrotik(config, clients, morosos, clean = 
                         await queueMenu.add(queueData);
                         actions.push(`➕ ${client.nombre} creado (moroso - ${syncLimit})`);
                     }
+                    await handleAddressList(api, cleanIP, config?.addressList || 'morosos', true);
                 } else {
-                    // 🟢 ACTIVO → queue deshabilitada (libre)
-                    const queueData = {
-                        name: finalName,
-                        target,
-                        'max-limit': '0/0',
-                        disabled: 'yes',
-                        comment: ''
-                    };
+                    // 🟢 ACTIVO → NO CREAR COLA NUEVA. Solo deshabilitar o eliminar si ya existía previamente.
                     if (existing && realId) {
-                        await queueMenu.set({ '.id': realId, ...queueData });
-                        actions.push(`🟢 ${client.nombre} actualizado (libre)`);
-                    } else {
-                        await queueMenu.add(queueData);
-                        actions.push(`➕ ${client.nombre} creado (libre)`);
+                        if (clean) {
+                            await queueMenu.remove({ '.id': realId });
+                            actions.push(`🗑 ${client.nombre} cola eliminada (cliente activo)`);
+                        } else {
+                            const queueData = {
+                                name: finalName,
+                                target,
+                                'max-limit': '0/0',
+                                disabled: 'yes',
+                                comment: ''
+                            };
+                            await queueMenu.set({ '.id': realId, ...queueData });
+                            actions.push(`🟢 ${client.nombre} cola previa desactivada (libre)`);
+                        }
                     }
+                    await handleAddressList(api, cleanIP, config?.addressList || 'morosos', false);
                 }
             } catch (err) {
                 const msg = (err.message || '').toUpperCase();
@@ -414,10 +462,16 @@ export async function syncClientsWithMikrotik(config, clients, morosos, clean = 
             }
         }
 
-        // BUG #9 corregido: limpieza busca por target (IP) no por nombre
-        console.log('[SYNC] Limpiando colas huérfanas...');
-        const clientIPs = new Set(
-            clients
+        // 2. Limpieza de colas que pertenecen a otros pueblos o son huérfanas en este router
+        console.log('[SYNC] Verificando colas de otros pueblos y colas huérfanas...');
+        const otherTownsIPs = new Set(
+            (clients || [])
+                .filter(c => c.ip && c.ip !== '0.0.0.0' && !clientBelongsToRouter(c, config))
+                .map(c => c.ip.split('/')[0].trim())
+        );
+
+        const routerClientIPs = new Set(
+            routerClients
                 .filter(c => c.ip && c.ip !== '0.0.0.0')
                 .map(c => c.ip.split('/')[0].trim())
         );
@@ -426,13 +480,22 @@ export async function syncClientsWithMikrotik(config, clients, morosos, clean = 
             try {
                 const qTarget = (q.target || '').split('/')[0].trim();
                 const realId = q['.id'] || q.id || q.name;
+                if (!realId || q.dynamic) continue;
 
-                if (!clientIPs.has(qTarget) && !q.dynamic && realId) {
+                // Si la cola pertenece a un cliente de OTRO pueblo (ej: Villa La Punta, Frías o Choya en router Sol de Mayo)
+                if (otherTownsIPs.has(qTarget)) {
                     await queueMenu.remove({ '.id': realId });
-                    actions.push(`🗑 Queue eliminada (${q.name || qTarget})`);
+                    actions.push(`🗑 Cola eliminada (pertenece a otro pueblo: ${q.name || qTarget})`);
+                    continue;
+                }
+
+                // Si clean === true y la cola no pertenece a ningún cliente de este router
+                if (clean && !routerClientIPs.has(qTarget)) {
+                    await queueMenu.remove({ '.id': realId });
+                    actions.push(`🗑 Queue huérfana eliminada (${q.name || qTarget})`);
                 }
             } catch (e) {
-                console.error('[SYNC] Error eliminando cola huérfana:', e.message);
+                console.error('[SYNC] Error en limpieza de cola:', e.message);
             }
         }
 

@@ -200,6 +200,38 @@ export function formatRouterConfig(router) {
     };
 }
 
+export function clientBelongsToRouter(client, routerConfig) {
+    if (!client || !routerConfig) return false;
+
+    // 1. Asignación explícita por mikrotikId
+    if (client.mikrotikId) {
+        if (routerConfig.id && client.mikrotikId === routerConfig.id) return true;
+        return false;
+    }
+
+    // 2. Asignación explícita por nombre de router
+    if (client.mikrotik) {
+        const mktLower = String(client.mikrotik).trim().toLowerCase();
+        const rNameLower = String(routerConfig.name || '').trim().toLowerCase();
+        const rIdLower = String(routerConfig.id || '').trim().toLowerCase();
+        if (mktLower === rNameLower || mktLower === rIdLower) return true;
+        return false;
+    }
+
+    // 3. Comparación por zona
+    if (client.zona) {
+        const clientZone = normalizeZoneName(client.zona);
+        const rZone = normalizeZoneName(routerConfig.zone);
+        const rName = normalizeZoneName(routerConfig.name);
+
+        if (rZone === clientZone || rName === clientZone) return true;
+        if (rName && clientZone && (rName.includes(clientZone) || clientZone.includes(rName))) return true;
+        if (rZone === 'TODOS') return true;
+    }
+
+    return false;
+}
+
 // ---- Obtener routers activos para un cliente según su router asignado o zona ----
 export function getRoutersForClient(client = null) {
     const settings = DB.getSettings();
@@ -416,9 +448,15 @@ export async function rebootMikrotik(config) {
 // Sync masivo
 export async function syncMikrotik(config, clients, morosos, clean = false) {
     try {
+        const filteredClients = (clients || []).filter(c => clientBelongsToRouter(c, config));
+        const filteredMorosos = (morosos || []).filter(m => {
+            const c = (clients || []).find(cl => cl.id === (m.clientId || m.id));
+            return c && clientBelongsToRouter(c, config);
+        });
+
         return await fetchWithTimeout(`${API_URL}/api/mikrotik/sync`, {
             method: 'POST',
-            body: JSON.stringify({ config, clients, morosos, clean })
+            body: JSON.stringify({ config, clients: filteredClients, morosos: filteredMorosos, clean })
         });
     } catch (e) {
         return { success: false, message: e.message };
